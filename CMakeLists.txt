@@ -6,11 +6,11 @@
 # You should have received a copy of the LICENSE file with
 # this file. 
 
-if (UNIX)
-    set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-    set(CMAKE_CXX_FLAGS_DEBUG "-g")
-    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -ftree-vectorize")
+if (UNIX OR APPLE)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og -g3")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -ftree-vectorize -march=native")
 endif ()
+
 
 cmake_minimum_required(VERSION 3.5)
 
@@ -30,6 +30,7 @@ cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo)
 
 option(ETHASHCL "Build with OpenCL mining" OFF)
 option(ETHASHCUDA "Build with CUDA mining" OFF)
+option(ETHASHSYCL "Build with SYCL mining" OFF)
 option(ETHASHCPU "Build with CPU mining (only for development)" OFF)
 option(APICORE "Build with API Server support" ON)
 option(DEVBUILD "Log developer metrics" OFF)
@@ -41,6 +42,10 @@ function(configureProject)
     endif ()
     if (ETHASHCUDA)
         add_definitions(-DETH_ETHASHCUDA)
+    endif ()
+    if (ETHASHSYCL)
+        add_definitions(-DETH_ETHASHSYCL)
+        set(DPCPP_FLAGS "-fsycl-targets=spir64,nvptx64-nvidia-cuda -Wno-unknown-cuda-version -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Xcuda-ptxas -v" CACHE STRING "SYCL Flags (for LLVM/SYCL and Intel(R) DPC++)")
     endif ()
     if (ETHASHCPU)
         add_definitions(-DETH_ETHASHCPU)
@@ -71,6 +76,7 @@ message("-- Build ${CMAKE_BUILD_TYPE} / ${CMAKE_SYSTEM_NAME}")
 message("----------------------------------------------------------------- components")
 message("-- ETHASHCL         Build OpenCL components                      ${ETHASHCL}")
 message("-- ETHASHCUDA       Build CUDA components                        ${ETHASHCUDA}")
+message("-- ETHASHSYCL       Build SYCL components                        ${ETHASHSYCL}")
 message("-- ETHASHCPU        Build CPU components (only for development)  ${ETHASHCPU}")
 message("-- APICORE          Build API Server components                  ${APICORE}")
 message("-- DEVBUILD         Build with dev logging                       ${DEVBUILD}")
@@ -78,9 +84,6 @@ message("-----------------------------------------------------------------------
 message("")
 
 include(EthCompilerSettings)
-if (UNIX)
-    #    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
-endif ()
 
 cable_add_buildinfo_library(PROJECT_NAME ${PROJECT_NAME})
 
@@ -96,6 +99,9 @@ endif ()
 if (ETHASHCUDA)
     add_subdirectory(libcuda)
 endif ()
+if (ETHASHSYCL)
+    add_subdirectory(libsycl)
+endif ()
 if (ETHASHCPU)
     add_subdirectory(libcpu)
 endif ()
@@ -104,7 +110,6 @@ if (APICORE)
 endif ()
 
 add_subdirectory(nsfminer)
-
 
 if (WIN32)
     set(CPACK_GENERATOR ZIP)
