@@ -22,13 +22,13 @@
 #define LOG_MULTI 1
 #define LOG_PER_GPU 2
 #if DEV_BUILD
-#define LOG_JSON 16
-#define LOG_CONNECT 32
-#define LOG_SWITCH 64
-#define LOG_SUBMIT 128
-#define LOG_NEXT 256
+#    define LOG_JSON 16
+#    define LOG_CONNECT 32
+#    define LOG_SWITCH 64
+#    define LOG_SUBMIT 128
+#    define LOG_NEXT 256
 #else
-#define LOG_NEXT 4
+#    define LOG_NEXT 4
 #endif
 
 extern unsigned g_logOptions;
@@ -93,12 +93,12 @@ public:
     }
 };
 
-#define clog(X) dev::LogOutputStream<X>()
+#define clog_(X) dev::LogOutputStream<X>()
 
 // Simple cout-like stream objects for accessing common log channels.
 // Dirties the global namespace, but oh so convenient...
-#define cnote clog(dev::NoteChannel)
-#define cwarn clog(dev::WarnChannel)
-#define ccrit clog(dev::CritChannel)
-#define cextr clog(dev::ExtraChannel)
+#define cnote clog_(dev::NoteChannel)
+#define cwarn clog_(dev::WarnChannel)
+#define ccrit clog_(dev::CritChannel)
+#define cextr clog_(dev::ExtraChannel)
 }   // namespace dev

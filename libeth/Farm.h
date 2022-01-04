@@ -29,10 +29,10 @@
 
 #include <libhwmon/wrapnvml.h>
 #if defined(__linux)
-#include <libhwmon/wrapamdsysfs.h>
-#include <sys/stat.h>
+#    include <libhwmon/wrapamdsysfs.h>
+#    include <sys/stat.h>
 #else
-#include <libhwmon/wrapadl.h>
+#    include <libhwmon/wrapadl.h>
 #endif
 
 using namespace boost::placeholders;
@@ -45,10 +45,14 @@ struct FarmSettings {
     unsigned tempStart = 40;   // Temperature threshold to restart mining (if paused)
     unsigned tempStop = 0;     // Temperature threshold to pause mining (overheating)
     std::string nonce;
+#ifdef ETH_ETHASHCUDA
     unsigned cuBlockSize = 0;
     unsigned cuStreams = 0;
+#endif
+#ifdef ETH_ETHASHCL
     unsigned clGroupSize = 0;
     bool clSplit = false;
+#endif
 };
 
 typedef std::map<std::string, DeviceDescriptor> minerMap;

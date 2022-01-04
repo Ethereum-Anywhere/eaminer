@@ -11,7 +11,6 @@
 #include "ApiServer.h"
 
 #include <nsfminer/buildinfo.h>
-
 #include <libeth/Farm.h>
 
 #include <utility>
