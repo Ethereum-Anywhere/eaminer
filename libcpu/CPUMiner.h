@@ -15,27 +15,25 @@
 
 #include <functional>
 
-namespace dev {
-namespace eth {
+namespace dev { namespace eth {
 class CPUMiner : public Miner {
-  public:
+public:
     CPUMiner(unsigned _index, DeviceDescriptor& _device);
     ~CPUMiner() override;
 
     static unsigned getNumDevices();
-    static void enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection);
+    static void enumDevices(std::map<std::string, DeviceDescriptor>& _DevicesCollection);
 
     void search(const dev::eth::WorkPackage& w);
 
-  protected:
+protected:
     bool initDevice() override;
     bool initEpoch() override;
     void kick_miner() override;
 
-  private:
-    atomic<bool> m_new_work = {false};
+private:
+    std::atomic<bool> m_new_work = {false};
     void workLoop() override;
 };
 
-} // namespace eth
-} // namespace dev
+}}   // namespace dev::eth

@@ -24,12 +24,10 @@ bool g_logSyslog = false;
 
 LogOutputStreamBase::LogOutputStreamBase(int severity) {
     static const char* color[4] = {EthWhite, EthYellow, EthRed, EthGreen};
-    if (g_logSyslog)
-        m_sstr << left << setw(5) << getThreadName() << " " EthReset;
+    if (g_logSyslog) m_sstr << left << setw(5) << getThreadName() << " " EthReset;
     else {
         auto t = chrono::system_clock::to_time_t(chrono::system_clock::now());
-        m_sstr << EthGray << put_time(localtime(&t), "%X") << ' ' << color[severity] << left << setw(5)
-               << getThreadName() << " " EthReset;
+        m_sstr << EthGray << put_time(localtime(&t), "%X") << ' ' << color[severity] << left << setw(5) << getThreadName() << " " EthReset;
     }
 }
 
@@ -50,8 +48,7 @@ string dev::getThreadName() {
     buffer[127] = 0;
     return buffer;
 #else
-    if (ThreadLocalLogName::name)
-        return ThreadLocalLogName::name;
+    if (ThreadLocalLogName::name) return ThreadLocalLogName::name;
     setThreadName("miner");
     return "miner";
 #endif
@@ -74,9 +71,8 @@ void dev::simpleDebugOut(string const& _s) {
         }
         bool skip = false;
         stringstream ss;
-        for (auto it : _s) {
-            if (!skip && it == '\x1b')
-                skip = true;
+        for (auto it: _s) {
+            if (!skip && it == '\x1b') skip = true;
             else if (skip && it == 'm')
                 skip = false;
             else if (!skip)
@@ -85,7 +81,5 @@ void dev::simpleDebugOut(string const& _s) {
         ss << '\n';
         cout << ss.str();
         cout.flush();
-    } catch (...) {
-        return;
-    }
+    } catch (...) { return; }
 }

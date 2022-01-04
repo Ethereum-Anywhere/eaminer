@@ -11,27 +11,25 @@
 #include <libeth/Farm.h>
 
 #if ETH_ETHASHCL
-#include <libcl/CLMiner.h>
+#    include <libcl/CLMiner.h>
 #endif
 
 #if ETH_ETHASHCUDA
-#include <libcuda/CUDAMiner.h>
+#    include <libcuda/CUDAMiner.h>
 #endif
 
 #if ETH_ETHASHCPU
-#include <libcpu/CPUMiner.h>
+#    include <libcpu/CPUMiner.h>
 #endif
 
 #include <libpool/PoolManager.h>
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 Farm* Farm::m_this = nullptr;
 const int Farm::m_collectInterval;
 
-Farm::Farm(minerMap& _DevicesCollection, FarmSettings _settings)
-    : m_Settings(move(_settings)), m_io_strand(g_io_service), m_collectTimer(g_io_service),
-      m_DevicesCollection(_DevicesCollection) {
+Farm::Farm(minerMap& DevicesCollection, FarmSettings _settings)
+    : m_Settings(move(_settings)), m_io_strand(g_io_service), m_collectTimer(g_io_service), m_DevicesCollection(DevicesCollection) {
     m_this = this;
     // Init HWMON if needed
     if (m_Settings.hwMon) {
@@ -45,17 +43,17 @@ Farm::Farm(minerMap& _DevicesCollection, FarmSettings _settings)
         bool need_nvmlh = false;
 
         // Scan devices collection to identify which hw monitors to initialize
-        for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++) {
-            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cuda) {
+        for (auto& it: m_DevicesCollection) {
+            if (it.second.subscriptionType == DeviceSubscriptionTypeEnum::Cuda) {
                 need_nvmlh = true;
                 continue;
             }
-            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL) {
-                if (it->second.clPlatformType == ClPlatformTypeEnum::Nvidia) {
+            if (it.second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL) {
+                if (it.second.clPlatformType == ClPlatformTypeEnum::Nvidia) {
                     need_nvmlh = true;
                     continue;
                 }
-                if (it->second.clPlatformType == ClPlatformTypeEnum::Amd) {
+                if (it.second.clPlatformType == ClPlatformTypeEnum::Amd) {
 #if defined(__linux)
                     need_sysfsh = true;
 #else
@@ -67,48 +65,42 @@ Farm::Farm(minerMap& _DevicesCollection, FarmSettings _settings)
         }
 
 #if defined(__linux)
-        if (need_sysfsh)
-            sysfsh = wrap_amdsysfs_create();
+        if (need_sysfsh) sysfsh = wrap_amdsysfs_create();
         if (sysfsh) {
             // Build Pci identification mapping as done in miners.
             for (int i = 0; i < sysfsh->sysfs_gpucount; i++) {
                 ostringstream oss;
                 string uniqueId;
-                oss << setfill('0') << setw(4) << hex << (unsigned)sysfsh->sysfs_pci_domain_id[i] << ':' << setw(2)
-                    << (unsigned)sysfsh->sysfs_pci_bus_id[i] << ":" << setw(2)
-                    << (unsigned int)(sysfsh->sysfs_pci_device_id[i]) << ".0";
+                oss << setfill('0') << setw(4) << hex << (unsigned) sysfsh->sysfs_pci_domain_id[i] << ':' << setw(2) << (unsigned) sysfsh->sysfs_pci_bus_id[i] << ":"
+                    << setw(2) << (unsigned int) (sysfsh->sysfs_pci_device_id[i]) << ".0";
                 uniqueId = oss.str();
                 map_amdsysfs_handle[uniqueId] = i;
             }
         }
 
 #else
-        if (need_adlh)
-            adlh = wrap_adl_create();
+        if (need_adlh) adlh = wrap_adl_create();
         if (adlh) {
             // Build Pci identification as done in miners.
             for (int i = 0; i < adlh->adl_gpucount; i++) {
                 ostringstream oss;
                 string uniqueId;
-                oss << "0000:" << setfill('0') << setw(2) << hex
-                    << (unsigned int)adlh->devs[adlh->phys_logi_device_id[i]].iBusNumber << ":" << setw(2)
-                    << (unsigned int)(adlh->devs[adlh->phys_logi_device_id[i]].iDeviceNumber) << ".0";
+                oss << "0000:" << setfill('0') << setw(2) << hex << (unsigned int) adlh->devs[adlh->phys_logi_device_id[i]].iBusNumber << ":" << setw(2)
+                    << (unsigned int) (adlh->devs[adlh->phys_logi_device_id[i]].iDeviceNumber) << ".0";
                 uniqueId = oss.str();
                 map_adl_handle[uniqueId] = i;
             }
         }
 
 #endif
-        if (need_nvmlh)
-            nvmlh = wrap_nvml_create();
+        if (need_nvmlh) nvmlh = wrap_nvml_create();
         if (nvmlh) {
             // Build Pci identification as done in miners.
             for (int i = 0; i < nvmlh->nvml_gpucount; i++) {
                 ostringstream oss;
                 string uniqueId;
-                oss << setfill('0') << setw(4) << hex << (unsigned)nvmlh->nvml_pci_domain_id[i] << ':' << setw(2) << hex
-                    << (unsigned)nvmlh->nvml_pci_bus_id[i] << ":" << setw(2)
-                    << (unsigned int)(nvmlh->nvml_pci_device_id[i] >> 3) << ".0";
+                oss << setfill('0') << setw(4) << hex << (unsigned) nvmlh->nvml_pci_domain_id[i] << ':' << setw(2) << hex << (unsigned) nvmlh->nvml_pci_bus_id[i] << ":"
+                    << setw(2) << (unsigned int) (nvmlh->nvml_pci_device_id[i] >> 3) << ".0";
                 uniqueId = oss.str();
                 map_nvml_handle[uniqueId] = i;
             }
@@ -119,8 +111,7 @@ Farm::Farm(minerMap& _DevicesCollection, FarmSettings _settings)
     // It should work for the whole lifetime of Farm
     // regardless it's mining state
     m_collectTimer.expires_from_now(boost::posix_time::milliseconds(m_collectInterval));
-    m_collectTimer.async_wait(
-        m_io_strand.wrap(boost::bind(&Farm::collectData, this, boost::asio::placeholders::error)));
+    m_collectTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::collectData, this, boost::asio::placeholders::error)));
 }
 
 Farm::~Farm() {
@@ -129,42 +120,37 @@ Farm::~Farm() {
 
     // Deinit HWMON
 #if defined(__linux)
-    if (sysfsh)
-        wrap_amdsysfs_destroy(sysfsh);
+    if (sysfsh) wrap_amdsysfs_destroy(sysfsh);
 #else
-    if (adlh)
-        wrap_adl_destroy(adlh);
+    if (adlh) wrap_adl_destroy(adlh);
 #endif
-    if (nvmlh)
-        wrap_nvml_destroy(nvmlh);
+    if (nvmlh) wrap_nvml_destroy(nvmlh);
 
     // Stop mining (if needed)
-    if (m_isMining.load(memory_order_relaxed))
-        stop();
+    if (m_isMining.load(memory_order_relaxed)) stop();
 }
 
 void Farm::setWork(WorkPackage const& _newWp) {
-    // Set work to each miner giving it's own starting nonce
+    // Set work to each miner giving its own starting nonce
     unique_lock<mutex> l(farmWorkMutex);
 
     m_currentWp = _newWp;
 
     // Get the randomly selected nonce
-    uint16_t segmentBits(64 - (unsigned)ceil(log2(m_miners.size())));
-    if (m_Settings.nonce.size()) {
+    uint16_t segmentBits(64 - (unsigned) ceil(log2(m_miners.size())));
+    if (!m_Settings.nonce.empty()) {
         segmentBits -= 4 * m_Settings.nonce.size();
-        m_currentWp.startNonce = strtoull(m_Settings.nonce.c_str(), nullptr, 16)
-                                 << (64 - (4 * m_Settings.nonce.size()));
+        m_currentWp.startNonce = strtoull(m_Settings.nonce.c_str(), nullptr, 16) << (64 - (4 * m_Settings.nonce.size()));
     } else {
         if (m_currentWp.exSizeBytes > 0) {
-            // Equally divide the residual segment among miners
+            // Equally, divide the residual segment among miners
             segmentBits -= m_currentWp.exSizeBytes * 4;
         } else
             m_currentWp.startNonce = uniform_int_distribution<uint64_t>()(m_engine);
     }
 
-    for (unsigned int i = 0; i < m_miners.size(); i++) {
-        m_miners.at(i)->setWork(m_currentWp);
+    for (auto& m_miner: m_miners) {
+        m_miner->setWork(m_currentWp);
         m_currentWp.startNonce += 1ULL << segmentBits;
     }
 }
@@ -174,51 +160,45 @@ void Farm::setWork(WorkPackage const& _newWp) {
  */
 bool Farm::start() {
     // Prevent recursion
-    if (m_isMining.load(memory_order_relaxed))
-        return true;
+    if (m_isMining.load(memory_order_relaxed)) return true;
 
     unique_lock<mutex> l(farmWorkMutex);
 
     // Start all subscribed miners if none yet
-    if (!m_miners.size()) {
-        for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++) {
+    if (m_miners.empty()) {
+        for (auto& it: m_DevicesCollection) {
             TelemetryAccountType minerTelemetry;
 #if ETH_ETHASHCUDA
-            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cuda) {
+            if (it.second.subscriptionType == DeviceSubscriptionTypeEnum::Cuda) {
                 minerTelemetry.prefix = "cu";
-                if (m_Settings.cuBlockSize)
-                    it->second.cuBlockSize = m_Settings.cuBlockSize;
-                if (m_Settings.cuStreams)
-                    it->second.cuStreamSize = m_Settings.cuStreams;
-                m_miners.push_back(shared_ptr<Miner>(new CUDAMiner(m_miners.size(), it->second)));
+                if (m_Settings.cuBlockSize) it.second.cuBlockSize = m_Settings.cuBlockSize;
+                if (m_Settings.cuStreams) it.second.cuStreamSize = m_Settings.cuStreams;
+                m_miners.push_back(shared_ptr<Miner>(new CUDAMiner(m_miners.size(), it.second)));
             }
 #endif
 #if ETH_ETHASHCL
 
             if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL) {
                 minerTelemetry.prefix = "cl";
-                if (m_Settings.clGroupSize)
-                    it->second.clGroupSize = m_Settings.clGroupSize;
+                if (m_Settings.clGroupSize) it->second.clGroupSize = m_Settings.clGroupSize;
                 it->second.clSplit = m_Settings.clSplit;
                 m_miners.push_back(shared_ptr<Miner>(new CLMiner(m_miners.size(), it->second)));
             }
 #endif
 #if ETH_ETHASHCPU
 
-            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::Cpu) {
+            if (it.second.subscriptionType == DeviceSubscriptionTypeEnum::Cpu) {
                 minerTelemetry.prefix = "cp";
-                m_miners.push_back(shared_ptr<Miner>(new CPUMiner(m_miners.size(), it->second)));
+                m_miners.push_back(shared_ptr<Miner>(new CPUMiner(m_miners.size(), it.second)));
             }
 #endif
-            if (minerTelemetry.prefix.empty())
-                continue;
+            if (minerTelemetry.prefix.empty()) continue;
             m_telemetry.miners.push_back(minerTelemetry);
             m_miners.back()->startWorking();
         }
 
     } else
-        for (auto const& miner : m_miners)
-            miner->startWorking();
+        for (auto const& miner: m_miners) miner->startWorking();
 
     m_isMining.store(true, memory_order_relaxed);
 
@@ -234,7 +214,7 @@ void Farm::stop() {
     if (isMining()) {
         {
             unique_lock<mutex> l(farmWorkMutex);
-            for (auto const& miner : m_miners) {
+            for (auto const& miner: m_miners) {
                 miner->triggerStopWorking();
                 miner->kick_miner();
             }
@@ -252,8 +232,7 @@ void Farm::pause() {
     // Signal each miner to suspend mining
     unique_lock<mutex> l(farmWorkMutex);
     m_paused.store(true, memory_order_relaxed);
-    for (auto const& m : m_miners)
-        m->pause(MinerPauseEnum::PauseDueToFarmPaused);
+    for (auto const& m: m_miners) m->pause(MinerPauseEnum::PauseDueToFarmPaused);
 }
 
 /**
@@ -269,22 +248,22 @@ void Farm::resume() {
     // Note ! Miners may stay suspended if other reasons
     unique_lock<mutex> l(farmWorkMutex);
     m_paused.store(false, memory_order_relaxed);
-    for (auto const& m : m_miners)
-        m->resume(MinerPauseEnum::PauseDueToFarmPaused);
+    for (auto const& m: m_miners) m->resume(MinerPauseEnum::PauseDueToFarmPaused);
 }
 
 /**
  * @brief Stop all mining activities and Starts them again
  */
 void Farm::restart() {
-    if (m_onMinerRestart)
-        m_onMinerRestart();
+    if (m_onMinerRestart) m_onMinerRestart();
 }
 
 /**
  * @brief Stop all mining activities and Starts them again (async post)
  */
-void Farm::restart_async() { g_io_service.post(m_io_strand.wrap(boost::bind(&Farm::restart, this))); }
+void Farm::restart_async() {
+    g_io_service.post(m_io_strand.wrap([this] { restart(); }));
+}
 
 /**
  * @brief Spawn a reboot script (reboot.bat/reboot.sh)
@@ -307,9 +286,9 @@ void Farm::accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accountin
     m_telemetry.farm.solutions.tstamp = chrono::steady_clock::now();
     if (_accounting == SolutionAccountingEnum::Accepted) {
         m_telemetry.farm.solutions.accepted++;
-        atomic_fetch_add((atomic<unsigned>*)&m_telemetry.farm.solutions.collectAcceptd, 1u);
+        atomic_fetch_add((atomic<unsigned>*) &m_telemetry.farm.solutions.collectAcceptd, 1u);
         m_telemetry.miners.at(_minerIdx).solutions.accepted++;
-        atomic_fetch_add((atomic<unsigned>*)&m_telemetry.miners.at(_minerIdx).solutions.collectAcceptd, 1u);
+        atomic_fetch_add((atomic<unsigned>*) &m_telemetry.miners.at(_minerIdx).solutions.collectAcceptd, 1u);
     } else if (_accounting == SolutionAccountingEnum::Wasted) {
         m_telemetry.farm.solutions.wasted++;
         m_telemetry.miners.at(_minerIdx).solutions.wasted++;
@@ -336,18 +315,16 @@ SolutionAccountType& Farm::getSolutions(unsigned _minerIdx) {
     static SolutionAccountType nullSolAccount;
     try {
         return m_telemetry.miners.at(_minerIdx).solutions;
-    } catch (const exception&) {
-        return nullSolAccount;
-    }
+    } catch (const exception&) { return nullSolAccount; }
 }
 
-void Farm::setTStartTStop(unsigned tstart, unsigned tstop) {
-    m_Settings.tempStart = tstart;
-    m_Settings.tempStop = tstop;
+void Farm::setTStartTStop(unsigned start, unsigned stop) {
+    m_Settings.tempStart = start;
+    m_Settings.tempStop = stop;
 }
 
 void Farm::submitProof(Solution const& _s) {
-    g_io_service.post(m_io_strand.wrap(boost::bind(&Farm::submitProofAsync, this, _s)));
+    g_io_service.post(m_io_strand.wrap([this, _s] { submitProofAsync(_s); }));
 }
 
 void Farm::submitProofAsync(Solution const& _s) {
@@ -360,26 +337,20 @@ void Farm::submitProofAsync(Solution const& _s) {
     m_onSolutionFound(Solution{_s.nonce, r.mixHash, _s.work, _s.tstamp, _s.midx});
 
 #ifdef DEV_BUILD
-    if (g_logOptions & LOG_SUBMIT)
-        cnote << "Submit time: "
-              << chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - _s.tstamp).count() << " us.";
+    if (g_logOptions & LOG_SUBMIT) cnote << "Submit time: " << chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - _s.tstamp).count() << " us.";
 #endif
-    if (_s.nonce)
-        cnote << EthWhite "Solution difficulty: "
-              << dev::getFormattedHashes(dev::getHashesToTarget(r.value.hex(HexPrefix::Add)));
+    if (_s.nonce) cnote << EthWhite "Solution difficulty: " << dev::getFormattedHashes(dev::getHashesToTarget(r.value.hex(HexPrefix::Add)));
 }
 
 // Collects data about hashing and hardware status
 void Farm::collectData(const boost::system::error_code& ec) {
-    if (ec)
-        return;
+    if (ec) return;
 
     // check for hung miners
-    for (auto const& miner : m_miners)
+    for (auto const& miner: m_miners)
         if (!miner->paused() && miner->m_initialized) {
             if (miner->m_hung_miner.load()) {
-                if (g_exitOnError)
-                    throw runtime_error("Hung GPU");
+                if (g_exitOnError) throw runtime_error("Hung GPU");
                 else if (!reboot({{"hung_miner_reboot"}}))
                     cwarn << "Hung GPU " << miner->Index() << " detected and reboot script failed!";
                 return;
@@ -391,7 +362,7 @@ void Farm::collectData(const boost::system::error_code& ec) {
     float farm_hr = 0.0f;
 
     // Process miners
-    for (auto const& miner : m_miners) {
+    for (auto const& miner: m_miners) {
         int minerIdx = miner->Index();
         float hr = (miner->paused() ? 0.0f : miner->RetrieveHashRate());
         farm_hr += hr;
@@ -420,8 +391,7 @@ void Farm::collectData(const boost::system::error_code& ec) {
                     wrap_nvml_get_mem_tempC(nvmlh, devIdx, &memtempC);
                     wrap_nvml_get_fanpcnt(nvmlh, devIdx, &fanpcnt);
 
-                    if (m_Settings.hwMon == 2)
-                        wrap_nvml_get_power_usage(nvmlh, devIdx, &powerW);
+                    if (m_Settings.hwMon == 2) wrap_nvml_get_power_usage(nvmlh, devIdx, &powerW);
                 }
             } else if (hwInfo.deviceType == HwMonitorInfoType::AMD) {
 #if defined(__linux)
@@ -442,12 +412,11 @@ void Farm::collectData(const boost::system::error_code& ec) {
                         wrap_amdsysfs_get_mem_tempC(sysfsh, devIdx, &memtempC);
                         wrap_amdsysfs_get_fanpcnt(sysfsh, devIdx, &fanpcnt);
 
-                        if (m_Settings.hwMon == 2)
-                            wrap_amdsysfs_get_power_usage(sysfsh, devIdx, &powerW);
+                        if (m_Settings.hwMon == 2) wrap_amdsysfs_get_power_usage(sysfsh, devIdx, &powerW);
                     }
                 }
 #else
-                if (adlh) // Windows only for AMD
+                if (adlh)   // Windows only for AMD
                 {
                     int devIdx = hwInfo.deviceIndex;
                     if (devIdx == -1 && !hwInfo.devicePciId.empty()) {
@@ -465,8 +434,7 @@ void Farm::collectData(const boost::system::error_code& ec) {
                         wrap_adl_get_mem_tempC(adlh, devIdx, &memtempC);
                         wrap_adl_get_fanpcnt(adlh, devIdx, &fanpcnt);
 
-                        if (m_Settings.hwMon == 2)
-                            wrap_adl_get_power_usage(adlh, devIdx, &powerW);
+                        if (m_Settings.hwMon == 2) wrap_adl_get_power_usage(adlh, devIdx, &powerW);
                     }
                 }
 #endif
@@ -476,16 +444,14 @@ void Farm::collectData(const boost::system::error_code& ec) {
             // check threshold
             if (m_Settings.tempStop) {
                 bool paused = miner->pauseTest(MinerPauseEnum::PauseDueToOverHeating);
-                if (!paused && (tempC >= m_Settings.tempStop))
-                    miner->pause(MinerPauseEnum::PauseDueToOverHeating);
-                if (paused && (tempC <= m_Settings.tempStart))
-                    miner->resume(MinerPauseEnum::PauseDueToOverHeating);
+                if (!paused && (tempC >= m_Settings.tempStop)) miner->pause(MinerPauseEnum::PauseDueToOverHeating);
+                if (paused && (tempC <= m_Settings.tempStart)) miner->resume(MinerPauseEnum::PauseDueToOverHeating);
             }
 
             m_telemetry.miners.at(minerIdx).sensors.tempC = tempC;
             m_telemetry.miners.at(minerIdx).sensors.memtempC = memtempC;
             m_telemetry.miners.at(minerIdx).sensors.fanP = fanpcnt;
-            m_telemetry.miners.at(minerIdx).sensors.powerW = powerW / ((double)1000.0);
+            m_telemetry.miners.at(minerIdx).sensors.powerW = powerW / ((double) 1000.0);
         }
         m_telemetry.farm.hashrate = farm_hr;
         miner->TriggerHashRateUpdate();
@@ -493,39 +459,31 @@ void Farm::collectData(const boost::system::error_code& ec) {
 
     // Resubmit timer for another loop
     m_collectTimer.expires_from_now(boost::posix_time::milliseconds(m_collectInterval));
-    m_collectTimer.async_wait(
-        m_io_strand.wrap(boost::bind(&Farm::collectData, this, boost::asio::placeholders::error)));
+    m_collectTimer.async_wait(m_io_strand.wrap(boost::bind(&Farm::collectData, this, boost::asio::placeholders::error)));
 }
 
 bool Farm::spawn_file_in_bin_dir(const char* filename, const vector<string>& args) {
-    string fn = boost::dll::program_location().parent_path().string() +
-                "/" + // boost::filesystem::path::preferred_separator
+    string fn = boost::dll::program_location().parent_path().string() + "/" +   // boost::filesystem::path::preferred_separator
                 filename;
     try {
-        if (!boost::filesystem::exists(fn))
-            return false;
+        if (!boost::filesystem::exists(fn)) return false;
 
         /* anything in the file */
-        if (!boost::filesystem::file_size(fn))
-            return false;
+        if (!boost::filesystem::file_size(fn)) return false;
 
 #if defined(__linux)
-        struct stat sb;
-        if (stat(fn.c_str(), &sb) != 0)
-            return false;
+        struct stat sb {};
+        if (stat(fn.c_str(), &sb) != 0) return false;
         /* just check if any exec flag is set.
            still execution can fail (not the uid, not in the group, selinux, ...)
          */
-        if ((sb.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0)
-            return false;
+        if ((sb.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0) return false;
 #endif
         /* spawn it (no wait,...) - fire and forget! */
         boost::process::spawn(fn, args);
         return true;
-    } catch (...) {
-    }
+    } catch (...) {}
     return false;
 }
 
-} // namespace eth
-} // namespace dev
+}   // namespace dev::eth

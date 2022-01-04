@@ -7,9 +7,9 @@
 # this file. 
 
 set(SOURCES
-    ApiServer.h ApiServer.cpp
-)
+        ApiServer.h ApiServer.cpp
+        )
 
 add_library(api ${SOURCES})
-target_link_libraries(api PRIVATE eth dev nsfminer-buildinfo Boost::filesystem ethash)
+target_link_libraries(api PRIVATE eth dev nsfminer-buildinfo Boost::filesystem ethash OpenSSL::SSL)
 target_include_directories(api PRIVATE ..)

@@ -15,15 +15,14 @@
 
 #include <ethash/ethash.hpp>
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 struct Result {
     h256 value;
     h256 mixHash;
 };
 
 class EthashAux {
-  public:
+public:
     static Result eval(int epoch, h256 const& _headerHash, uint64_t _nonce) noexcept;
 };
 
@@ -41,10 +40,10 @@ struct WorkPackage {
 
     explicit operator bool() const { return header != h256(); }
 
-    std::string job; // Job identifier can be anything. Not necessarily a hash
+    std::string job;   // Job identifier can be anything. Not necessarily a hash
 
     h256 boundary;
-    h256 header; ///< When h256() means "pause until notified a new work package is available".
+    h256 header;   ///< When h256() means "pause until notified a new work package is available".
     h256 seed;
 
     int epoch = -1;
@@ -56,12 +55,11 @@ struct WorkPackage {
 };
 
 struct Solution {
-    uint64_t nonce;                               // Solution found nonce
-    h256 mixHash;                                 // Mix hash
-    WorkPackage work;                             // WorkPackage this solution refers to
-    std::chrono::steady_clock::time_point tstamp; // Timestamp of found solution
-    unsigned midx;                                // Originating miner Id
+    uint64_t nonce;                                 // Solution found nonce
+    h256 mixHash;                                   // Mix hash
+    WorkPackage work;                               // WorkPackage this solution refers to
+    std::chrono::steady_clock::time_point tstamp;   // Timestamp of found solution
+    unsigned midx;                                  // Originating miner Id
 };
 
-} // namespace eth
-} // namespace dev
+}   // namespace dev::eth

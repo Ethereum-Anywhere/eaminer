@@ -17,14 +17,10 @@ using namespace std;
 using namespace dev;
 
 int dev::fromHex(char _i, WhenError _throw) {
-    if (_i >= '0' && _i <= '9')
-        return _i - '0';
-    if (_i >= 'a' && _i <= 'f')
-        return _i - 'a' + 10;
-    if (_i >= 'A' && _i <= 'F')
-        return _i - 'A' + 10;
-    if (_throw == WhenError::Throw)
-        BOOST_THROW_EXCEPTION(BadHexCharacter() << errinfo_invalidSymbol(_i));
+    if (_i >= '0' && _i <= '9') return _i - '0';
+    if (_i >= 'a' && _i <= 'f') return _i - 'a' + 10;
+    if (_i >= 'A' && _i <= 'F') return _i - 'A' + 10;
+    if (_throw == WhenError::Throw) BOOST_THROW_EXCEPTION(BadHexCharacter() << errinfo_invalidSymbol(_i));
     else
         return -1;
 }
@@ -36,8 +32,7 @@ bytes dev::fromHex(string const& _s, WhenError _throw) {
 
     if (_s.size() % 2) {
         int h = fromHex(_s[s++], WhenError::DontThrow);
-        if (h != -1)
-            ret.push_back(h);
+        if (h != -1) ret.push_back(h);
         else if (_throw == WhenError::Throw)
             BOOST_THROW_EXCEPTION(BadHexCharacter());
         else
@@ -46,8 +41,7 @@ bytes dev::fromHex(string const& _s, WhenError _throw) {
     for (unsigned i = s; i < _s.size(); i += 2) {
         int h = fromHex(_s[i], WhenError::DontThrow);
         int l = fromHex(_s[i + 1], WhenError::DontThrow);
-        if (h != -1 && l != -1)
-            ret.push_back((::byte)(h * 16 + l));
+        if (h != -1 && l != -1) ret.push_back((::byte)(h * 16 + l));
         else if (_throw == WhenError::Throw)
             BOOST_THROW_EXCEPTION(BadHexCharacter());
         else
@@ -58,8 +52,7 @@ bytes dev::fromHex(string const& _s, WhenError _throw) {
 
 bool dev::setenv(const char name[], const char value[], bool override) {
 #if _WIN32
-    if (!override && getenv(name) != nullptr)
-        return true;
+    if (!override && getenv(name) != nullptr) return true;
 
     return ::_putenv_s(name, value) == 0;
 #else
@@ -74,8 +67,7 @@ string dev::getTargetFromDiff(double diff, HexPrefix _prefix) {
     static BigInteger base("0x00000000ffff0000000000000000000000000000000000000000000000000000");
     BigInteger product;
 
-    if (diff == 0)
-        product = BigInteger("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+    if (diff == 0) product = BigInteger("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
     else {
         diff = 1 / diff;
 
@@ -136,8 +128,7 @@ double dev::getHashesToTarget(string _target) {
     return double(dividend / divisor);
 }
 
-string dev::getScaledSize(double _value, double _divisor, int _precision, string _sizes[], size_t _numsizes,
-                          ScaleSuffix _suffix) {
+string dev::getScaledSize(double _value, double _divisor, int _precision, string _sizes[], size_t _numsizes, ScaleSuffix _suffix) {
     double _newvalue = _value;
     size_t i = 0;
     while (_newvalue > _divisor && i <= (_numsizes - 1)) {
@@ -147,8 +138,7 @@ string dev::getScaledSize(double _value, double _divisor, int _precision, string
 
     stringstream _ret;
     _ret << fixed << setprecision(_precision) << _newvalue;
-    if (_suffix == ScaleSuffix::Add)
-        _ret << " " << _sizes[i];
+    if (_suffix == ScaleSuffix::Add) _ret << " " << _sizes[i];
     return _ret.str();
 }
 
@@ -163,13 +153,11 @@ string dev::getFormattedMemory(double _mem, ScaleSuffix _suffix, int _precision)
 }
 
 string dev::padLeft(string _value, size_t _length, char _fillChar) {
-    if (_length > _value.size())
-        _value.insert(0, (_length - _value.size()), _fillChar);
+    if (_length > _value.size()) _value.insert(0, (_length - _value.size()), _fillChar);
     return _value;
 }
 
 string dev::padRight(string _value, size_t _length, char _fillChar) {
-    if (_length > _value.size())
-        _value.resize(_length, _fillChar);
+    if (_length > _value.size()) _value.resize(_length, _fillChar);
     return _value;
 }

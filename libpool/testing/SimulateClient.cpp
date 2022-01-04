@@ -29,8 +29,7 @@ void SimulateClient::connect() {
     m_session->subscribed.store(true, memory_order_relaxed);
     m_session->authorized.store(true, memory_order_relaxed);
 
-    if (m_onConnected)
-        m_onConnected();
+    if (m_onConnected) m_onConnected();
 
     // No need to worry about starting again.
     // Worker class prevents that
@@ -38,37 +37,31 @@ void SimulateClient::connect() {
 }
 
 void SimulateClient::disconnect() {
-    cnote << "Simulation results : " << EthWhiteBold << "Max "
-          << dev::getFormattedHashes((double)hr_max, ScaleSuffix::Add, 6) << " Mean "
-          << dev::getFormattedHashes((double)hr_mean, ScaleSuffix::Add, 6) << EthReset;
+    cnote << "Simulation results : " << EthWhiteBold << "Max " << dev::getFormattedHashes((double) hr_max, ScaleSuffix::Add, 6) << " Mean "
+          << dev::getFormattedHashes((double) hr_mean, ScaleSuffix::Add, 6) << EthReset;
 
     m_conn->addDuration(m_session->duration());
     m_session = nullptr;
     m_connected.store(false, memory_order_relaxed);
 
-    if (m_onDisconnected)
-        m_onDisconnected();
+    if (m_onDisconnected) m_onDisconnected();
 }
 
 void SimulateClient::submitHashrate(uint64_t const& rate, string const& id) {
-    (void)rate;
-    (void)id;
+    (void) rate;
+    (void) id;
 }
 
 void SimulateClient::submitSolution(const Solution& solution) {
     // This is a fake submission only evaluated locally
     chrono::steady_clock::time_point submit_start = chrono::steady_clock::now();
-    bool accepted =
-        EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value <= solution.work.boundary;
-    chrono::milliseconds response_delay_ms =
-        chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - submit_start);
+    bool accepted = EthashAux::eval(solution.work.epoch, solution.work.header, solution.nonce).value <= solution.work.boundary;
+    chrono::milliseconds response_delay_ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - submit_start);
 
     if (accepted) {
-        if (m_onSolutionAccepted)
-            m_onSolutionAccepted(response_delay_ms, solution.midx, false);
+        if (m_onSolutionAccepted) m_onSolutionAccepted(response_delay_ms, solution.midx, false);
     } else {
-        if (m_onSolutionRejected)
-            m_onSolutionRejected(response_delay_ms, solution.midx);
+        if (m_onSolutionRejected) m_onSolutionRejected(response_delay_ms, solution.midx);
     }
 }
 
@@ -77,12 +70,12 @@ void SimulateClient::workLoop() {
     m_start_time = chrono::steady_clock::now();
 
     WorkPackage current;
-    current.seed = h256::random(); // We don't actually need a real seed as the epoch
-                                   // is calculated upon block number (see poolmanager)
+    current.seed = h256::random();   // We don't actually need a real seed as the epoch
+                                     // is calculated upon block number (see poolmanager)
     current.header = h256::random();
     current.block = m_block;
     current.boundary = h256(dev::getTargetFromDiff(1));
-    m_onWorkReceived(current); // submit new fake job
+    m_onWorkReceived(current);   // submit new fake job
 
     while (m_session) {
         float hr = Farm::f().HashRate();

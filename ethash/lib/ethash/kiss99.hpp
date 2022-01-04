@@ -28,8 +28,7 @@
 /**
  * The KISS generator.
  */
-class kiss99
-{
+class kiss99 {
     uint32_t z = 362436069;
     uint32_t w = 521288629;
     uint32_t jsr = 123456789;
@@ -40,14 +39,11 @@ public:
     kiss99() noexcept = default;
 
     /** Creates KISS generator state with provided init values.*/
-    kiss99(uint32_t _z, uint32_t _w, uint32_t _jsr, uint32_t _jcong) noexcept
-      : z{_z}, w{_w}, jsr{_jsr}, jcong{_jcong}
-    {}
+    kiss99(uint32_t _z, uint32_t _w, uint32_t _jsr, uint32_t _jcong) noexcept : z{_z}, w{_w}, jsr{_jsr}, jcong{_jcong} {}
 
     /** Generates next number from the KISS generator. */
     NO_SANITIZE("unsigned-integer-overflow")
-    uint32_t operator()() noexcept
-    {
+    uint32_t operator()() noexcept {
         z = 36969 * (z & 0xffff) + (z >> 16);
         w = 18000 * (w & 0xffff) + (w >> 16);
 

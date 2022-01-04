@@ -18,14 +18,13 @@ typedef struct {
     unsigned int* sysfs_pci_device_id;
 } wrap_amdsysfs_handle;
 
-typedef struct {
+struct pciInfo {
     int DeviceId = -1;
     int HwMonId = -1;
     int PciDomain = -1;
     int PciBus = -1;
     int PciDevice = -1;
-
-} pciInfo;
+};
 
 wrap_amdsysfs_handle* wrap_amdsysfs_create();
 int wrap_amdsysfs_destroy(wrap_amdsysfs_handle* sysfsh);

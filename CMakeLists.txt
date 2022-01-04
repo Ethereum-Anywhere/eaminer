@@ -6,11 +6,11 @@
 # You should have received a copy of the LICENSE file with
 # this file. 
 
-if(UNIX)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2")
-endif()
+if (UNIX)
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g")
+    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -ftree-vectorize")
+endif ()
 
 cmake_minimum_required(VERSION 3.5)
 
@@ -19,27 +19,17 @@ include(cmake/cable/bootstrap.cmake)
 include(CableBuildInfo)
 include(CableBuildType)
 include(CableToolchains)
-include(HunterGate)
-
-include(defaults/HunterCacheServers)
 
 cable_configure_toolchain(DEFAULT cxx17)
 
-set(HUNTER_CONFIGURATION_TYPES Release CACHE STRING "Build type of Hunter packages")
-set(HUNTER_JOBS_NUMBER 6 CACHE STRING "Number of parallel builds used by Hunter")
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.304.tar.gz"
-    SHA1 "cae9026e69d7d8333897663688a11f4232fb8826"
-    LOCAL
-)
 
 project(nsfminer)
 set(PROJECT_VERSION 1.3.14) # Update version
 
 cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo)
 
-option(ETHASHCL "Build with OpenCL mining" ON)
-option(ETHASHCUDA "Build with CUDA mining" ON)
+option(ETHASHCL "Build with OpenCL mining" OFF)
+option(ETHASHCUDA "Build with CUDA mining" OFF)
 option(ETHASHCPU "Build with CPU mining (only for development)" OFF)
 option(APICORE "Build with API Server support" ON)
 option(DEVBUILD "Log developer metrics" OFF)
@@ -48,26 +38,30 @@ option(DEVBUILD "Log developer metrics" OFF)
 function(configureProject)
     if (ETHASHCL)
         add_definitions(-DETH_ETHASHCL)
-    endif()
+    endif ()
     if (ETHASHCUDA)
         add_definitions(-DETH_ETHASHCUDA)
-    endif()
+    endif ()
     if (ETHASHCPU)
         add_definitions(-DETH_ETHASHCPU)
-    endif()
+    endif ()
     if (APICORE)
         add_definitions(-DAPI_CORE)
-    endif()
+    endif ()
     if (DEVBUILD)
         add_definitions(-DDEV_BUILD)
-    endif()
+    endif ()
 endfunction()
 
-hunter_add_package(Boost COMPONENTS system filesystem thread program_options)
-find_package(Boost CONFIG REQUIRED COMPONENTS system filesystem thread program_options)
+#hunter_add_package(Boost COMPONENTS system filesystem thread program_options)
+find_package(Boost COMPONENTS system filesystem thread program_options REQUIRED)
 
-hunter_add_package(jsoncpp)
-find_package(jsoncpp CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP jsoncpp)
+link_directories(${JSONCPP_LIBRARY_DIRS})
+#find_library(jsoncpp REQUIRED)
 
 configureProject()
 
@@ -84,9 +78,9 @@ message("-----------------------------------------------------------------------
 message("")
 
 include(EthCompilerSettings)
-if(UNIX)
+if (UNIX)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
-endif()
+endif ()
 
 cable_add_buildinfo_library(PROJECT_NAME ${PROJECT_NAME})
 
@@ -107,16 +101,16 @@ if (ETHASHCPU)
 endif ()
 if (APICORE)
     add_subdirectory(libapi)
-endif()
+endif ()
 
 add_subdirectory(nsfminer)
 
 
-if(WIN32)
+if (WIN32)
     set(CPACK_GENERATOR ZIP)
-else()
+else ()
     set(CPACK_GENERATOR TGZ)
-endif()
+endif ()
 set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME})
 set(CPACK_PACKAGE_CHECKSUM SHA256)
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)

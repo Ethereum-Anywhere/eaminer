@@ -39,12 +39,10 @@ enum class ScaleSuffix { DontAdd = 0, Add = 1 };
 /// @param _w specifies the width of the first of the elements. Defaults to two - enough to
 /// represent a byte.
 /// @example toHex("A\x69") == "4169"
-template <class T> std::string toHex(T const& _data, int _w = 2, HexPrefix _prefix = HexPrefix::DontAdd) {
+template<class T> std::string toHex(T const& _data, int _w = 2, HexPrefix _prefix = HexPrefix::DontAdd) {
     std::ostringstream ret;
     unsigned ii = 0;
-    for (auto i : _data)
-        ret << std::hex << std::setfill('0') << std::setw(ii++ ? 2 : _w)
-            << (int)(typename std::make_unsigned<decltype(i)>::type)i;
+    for (auto i: _data) ret << std::hex << std::setfill('0') << std::setw(ii++ ? 2 : _w) << (int) (typename std::make_unsigned<decltype(i)>::type) i;
     return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
 }
 
@@ -60,14 +58,10 @@ bytes fromHex(std::string const& _s, WhenError _throw = WhenError::DontThrow);
 
 /// Converts byte array to a string containing the same (binary) data. Unless
 /// the byte array happens to contain ASCII data, this won't be printable.
-inline std::string asString(bytes const& _b) {
-    return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size()));
-}
+inline std::string asString(bytes const& _b) { return std::string((char const*) _b.data(), (char const*) (_b.data() + _b.size())); }
 
 /// Converts a string to a byte array containing the string's (byte) data.
-inline bytes asBytes(std::string const& _b) {
-    return bytes((::byte const*)_b.data(), (::byte const*)(_b.data() + _b.size()));
-}
+inline bytes asBytes(std::string const& _b) { return bytes((::byte const*) _b.data(), (::byte const*) (_b.data() + _b.size())); }
 
 // Big-endian to/from host endian conversion functions.
 
@@ -76,12 +70,12 @@ inline bytes asBytes(std::string const& _b) {
 /// represent the value properly, if too big then the additional elements will be zeroed out.
 /// @a Out will typically be either std::string or bytes.
 /// @a T will typically by unsigned, u160, u256 or bigint.
-template <class T, class Out> inline void toBigEndian(T _val, Out& o_out) {
+template<class T, class Out> inline void toBigEndian(T _val, Out& o_out) {
     static_assert(std::is_same<bigint, T>::value || !std::numeric_limits<T>::is_signed,
-                  "only unsigned types or bigint supported"); // bigint does not carry sign bit on shift
+                  "only unsigned types or bigint supported");   // bigint does not carry sign bit on shift
     for (auto i = o_out.size(); i != 0; _val >>= 8, i--) {
-        T v = _val & (T)0xff;
-        o_out[i - 1] = (typename Out::value_type)(uint8_t)v;
+        T v = _val & (T) 0xff;
+        o_out[i - 1] = (typename Out::value_type)(uint8_t) v;
     }
 }
 
@@ -89,10 +83,9 @@ template <class T, class Out> inline void toBigEndian(T _val, Out& o_out) {
 /// value.
 /// @a _In will typically be either std::string or bytes.
 /// @a T will typically by unsigned, u160, u256 or bigint.
-template <class T, class _In> inline T fromBigEndian(_In const& _bytes) {
-    T ret = (T)0;
-    for (auto i : _bytes)
-        ret = (T)((ret << 8) | (::byte)(typename std::make_unsigned<typename _In::value_type>::type)i);
+template<class T, class _In> inline T fromBigEndian(_In const& _bytes) {
+    T ret = (T) 0;
+    for (auto i: _bytes) ret = (T) ((ret << 8) | (::byte)(typename std::make_unsigned<typename _In::value_type>::type) i);
     return ret;
 }
 
@@ -110,12 +103,11 @@ inline bytes toBigEndian(u160 _val) {
 
 /// Convenience function for toBigEndian.
 /// @returns a byte array just big enough to represent @a _val.
-template <class T> inline bytes toCompactBigEndian(T _val, unsigned _min = 0) {
+template<class T> inline bytes toCompactBigEndian(T _val, unsigned _min = 0) {
     static_assert(std::is_same<bigint, T>::value || !std::numeric_limits<T>::is_signed,
-                  "only unsigned types or bigint supported"); // bigint does not carry sign bit on shift
+                  "only unsigned types or bigint supported");   // bigint does not carry sign bit on shift
     int i = 0;
-    for (T v = _val; v; ++i, v >>= 8) {
-    }
+    for (T v = _val; v; ++i, v >>= 8) {}
     bytes ret(std::max<unsigned>(_min, i), 0);
     toBigEndian(_val, ret);
     return ret;
@@ -166,12 +158,11 @@ std::string escaped(std::string const& _s, bool _all = true);
 // General datatype convenience functions.
 
 /// Determine bytes required to encode the given integer value. @returns 0 if @a _i is zero.
-template <class T> inline unsigned bytesRequired(T _i) {
+template<class T> inline unsigned bytesRequired(T _i) {
     static_assert(std::is_same<bigint, T>::value || !std::numeric_limits<T>::is_signed,
-                  "only unsigned types or bigint supported"); // bigint does not carry sign bit on shift
+                  "only unsigned types or bigint supported");   // bigint does not carry sign bit on shift
     unsigned i = 0;
-    for (; _i != 0; ++i, _i >>= 8) {
-    }
+    for (; _i != 0; ++i, _i >>= 8) {}
     return i;
 }
 
@@ -187,8 +178,7 @@ std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 double getHashesToTarget(std::string _target);
 
 /// Generic function to scale a value
-std::string getScaledSize(double _value, double _divisor, int _precision, std::string _sizes[], size_t _numsizes,
-                          ScaleSuffix _suffix = ScaleSuffix::Add);
+std::string getScaledSize(double _value, double _divisor, int _precision, std::string _sizes[], size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);
 
 /// Formats hashrate
 std::string getFormattedHashes(double _hr, ScaleSuffix _suffix = ScaleSuffix::Add, int _precision = 2);
@@ -202,4 +192,4 @@ std::string padLeft(std::string _value, size_t _length, char _fillChar);
 /// Adjust string to a fixed length filling chars to the Right
 std::string padRight(std::string _value, size_t _length, char _fillChar);
 
-} // namespace dev
+}   // namespace dev

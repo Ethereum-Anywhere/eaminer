@@ -11,9 +11,6 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
-#include <sstream>
-
-#include <cstring>
 
 #include <libpool/PoolURI.h>
 
@@ -27,36 +24,33 @@ struct SchemeAttributes {
 };
 
 static map<string, SchemeAttributes> s_schemes = {
-    /*
-    This schemes are kept for backwards compatibility.
-    Ethminer do perform stratum autodetection
-    */
-    {"stratum+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 0}},
-    {"stratum1+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 1}},
-    {"stratum2+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 2}},
-    {"stratum3+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 3}},
-    {"stratum+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 0}},
-    {"stratum1+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 1}},
-    {"stratum2+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 2}},
-    {"stratum3+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 3}},
-    {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
-    {"getwork", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
+        /* These schemes are kept for backwards compatibility. Ethminer do perform stratum autodetection */
+        {"stratum+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 0}},
+        {"stratum1+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 1}},
+        {"stratum2+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 2}},
+        {"stratum3+tcp", {ProtocolFamily::STRATUM, SecureLevel::NONE, 3}},
+        {"stratum+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 0}},
+        {"stratum1+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 1}},
+        {"stratum2+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 2}},
+        {"stratum3+ssl", {ProtocolFamily::STRATUM, SecureLevel::TLS, 3}},
+        {"http", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
+        {"getwork", {ProtocolFamily::GETWORK, SecureLevel::NONE, 0}},
 
-    /*
+        /*
     Any TCP scheme has, at the moment, only STRATUM protocol thus
     reiterating "stratum" word would be pleonastic
     Version 9 means auto-detect stratum mode
     */
 
-    {"stratum", {ProtocolFamily::STRATUM, SecureLevel::NONE, 999}},
-    {"stratums", {ProtocolFamily::STRATUM, SecureLevel::TLS, 999}},
+        {"stratum", {ProtocolFamily::STRATUM, SecureLevel::NONE, 999}},
+        {"stratums", {ProtocolFamily::STRATUM, SecureLevel::TLS, 999}},
 
-    /*
+        /*
     The following scheme is only meant for simulation operations
     It's not meant to be used with -P arguments
     */
 
-    {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}};
+        {"simulation", {ProtocolFamily::SIMULATION, SecureLevel::NONE, 999}}};
 
 static bool url_decode(const string& in, string& out) {
     out.clear();
@@ -85,15 +79,14 @@ static bool url_decode(const string& in, string& out) {
 }
 
 /*
-  For a well designed explanation of URI parts
+  For a well-designed explanation of URI parts
   refer to https://cpp-netlib.org/0.10.1/in_depth/uri.html
 */
 
 URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
-    regex sch_auth("^([a-zA-Z0-9\\+]{1,})\\:\\/\\/(.*)$");
+    regex sch_auth(R"(^([a-zA-Z0-9\+]{1,})\:\/\/(.*)$)");
     smatch matches;
-    if (!regex_search(m_uri, matches, sch_auth, regex_constants::match_default))
-        return;
+    if (!regex_search(m_uri, matches, sch_auth, regex_constants::match_default)) return;
 
     // Split scheme and authoority
     // Authority MUST be valued
@@ -102,16 +95,13 @@ URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
     m_authority = matches[2].str();
 
     // Missing authority is not possible
-    if (m_authority.empty())
-        throw runtime_error("Invalid authority");
+    if (m_authority.empty()) throw runtime_error("Invalid authority");
 
     // Simulation scheme is only allowed if specifically set
-    if (!_sim && m_scheme == "simulation")
-        throw runtime_error("Invalid scheme");
+    if (!_sim && m_scheme == "simulation") throw runtime_error("Invalid scheme");
 
     // Check scheme is allowed
-    if ((s_schemes.find(m_scheme) == s_schemes.end()))
-        throw runtime_error("Invalid scheme");
+    if ((s_schemes.find(m_scheme) == s_schemes.end())) throw runtime_error("Invalid scheme");
 
     // Now let's see if authority part can be split into userinfo and "the rest"
     regex usr_url("^(.*)\\@(.*)$");
@@ -145,46 +135,43 @@ URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
             string match_str = match[1].str();
             btick_blocks["_" + to_string(i++)] = match[1].str();
         }
-        if (btick_blocks.size()) {
+        if (!btick_blocks.empty()) {
             map<string, string>::iterator it;
-            for (it = btick_blocks.begin(); it != btick_blocks.end(); it++)
-                boost::replace_all(m_userinfo, "`" + it->second + "`", "`" + it->first + "`");
+            for (it = btick_blocks.begin(); it != btick_blocks.end(); it++) boost::replace_all(m_userinfo, "`" + it->second + "`", "`" + it->first + "`");
         }
 
         vector<regex> usr_patterns;
-        usr_patterns.push_back(regex("^(.*)\\.(.*)\\:(.*)$"));
-        usr_patterns.push_back(regex("^(.*)\\:(.*)$"));
-        usr_patterns.push_back(regex("^(.*)\\.(.*)$"));
+        usr_patterns.emplace_back("^(.*)\\.(.*)\\:(.*)$");
+        usr_patterns.emplace_back("^(.*)\\:(.*)$");
+        usr_patterns.emplace_back("^(.*)\\.(.*)$");
         bool usrMatchFound = false;
         for (size_t i = 0; i < usr_patterns.size() && !usrMatchFound; i++) {
             if (regex_search(m_userinfo, matches, usr_patterns.at(i), regex_constants::match_default)) {
                 usrMatchFound = true;
                 switch (i) {
-                case 0:
-                    m_user = matches[1].str();
-                    m_worker = matches[2].str();
-                    m_password = matches[3].str();
-                    break;
-                case 1:
-                    m_user = matches[1];
-                    m_password = matches[2];
-                    break;
-                case 2:
-                    m_user = matches[1];
-                    m_worker = matches[2];
-                    break;
-                default:
-                    break;
+                    case 0:
+                        m_user = matches[1].str();
+                        m_worker = matches[2].str();
+                        m_password = matches[3].str();
+                        break;
+                    case 1:
+                        m_user = matches[1];
+                        m_password = matches[2];
+                        break;
+                    case 2:
+                        m_user = matches[1];
+                        m_worker = matches[2];
+                        break;
+                    default: break;
                 }
             }
         }
         // If no matches found after this loop it means all the user
         // part is only user login
-        if (!usrMatchFound)
-            m_user = m_userinfo;
+        if (!usrMatchFound) m_user = m_userinfo;
 
         // Replace all tokens with their respective values
-        if (btick_blocks.size()) {
+        if (!btick_blocks.empty()) {
             map<string, string>::iterator it;
             for (it = btick_blocks.begin(); it != btick_blocks.end(); it++) {
                 boost::replace_all(m_userinfo, "`" + it->first + "`", it->second);
@@ -200,7 +187,7 @@ URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
       an optional port and eventually a path (which may include a query
       and a fragment)
       Host can be a DNS host or an IP address.
-      Thus we can have
+      Thus, we can have
       - host
       - host/path
       - host:port
@@ -213,7 +200,7 @@ URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
     } else {
         m_hostinfo = m_urlinfo;
     }
-    boost::algorithm::to_lower(m_hostinfo); // needed to ensure we properly hit "exit" as host
+    boost::algorithm::to_lower(m_hostinfo);   // needed to ensure we properly hit "exit" as host
     regex host_pattern("^(.*)\\:([0-9]{1,5})$");
     if (regex_search(m_hostinfo, matches, host_pattern, regex_constants::match_default)) {
         m_host = matches[1].str();
@@ -223,8 +210,7 @@ URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
     }
 
     // Host info must be present and valued
-    if (m_host.empty())
-        throw runtime_error("Missing host");
+    if (m_host.empty()) throw runtime_error("Missing host");
 
     /*
       Eventually split path info into path query fragment
@@ -233,35 +219,33 @@ URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
         // Url Decode Path
 
         vector<regex> path_patterns;
-        path_patterns.push_back(regex("(\\/.*)\\?(.*)\\#(.*)$"));
-        path_patterns.push_back(regex("(\\/.*)\\#(.*)$"));
-        path_patterns.push_back(regex("(\\/.*)\\?(.*)$"));
+        path_patterns.emplace_back(R"((\/.*)\?(.*)\#(.*)$)");
+        path_patterns.emplace_back("(\\/.*)\\#(.*)$");
+        path_patterns.emplace_back("(\\/.*)\\?(.*)$");
         bool pathMatchFound = false;
         for (size_t i = 0; i < path_patterns.size() && !pathMatchFound; i++) {
             if (regex_search(m_pathinfo, matches, path_patterns.at(i), regex_constants::match_default)) {
                 pathMatchFound = true;
                 switch (i) {
-                case 0:
-                    m_path = matches[1].str();
-                    m_query = matches[2].str();
-                    m_fragment = matches[3].str();
-                    break;
-                case 1:
-                    m_path = matches[1].str();
-                    m_fragment = matches[2].str();
-                    break;
-                case 2:
-                    m_path = matches[1].str();
-                    m_query = matches[2].str();
-                    break;
-                default:
-                    break;
+                    case 0:
+                        m_path = matches[1].str();
+                        m_query = matches[2].str();
+                        m_fragment = matches[3].str();
+                        break;
+                    case 1:
+                        m_path = matches[1].str();
+                        m_fragment = matches[2].str();
+                        break;
+                    case 2:
+                        m_path = matches[1].str();
+                        m_query = matches[2].str();
+                        break;
+                    default: break;
                 }
             }
             // If no matches found after this loop it means all the pathinfo
             // part is only path login
-            if (!pathMatchFound)
-                m_path = m_pathinfo;
+            if (!pathMatchFound) m_path = m_pathinfo;
         }
     }
 
@@ -270,52 +254,35 @@ URI::URI(string uri, bool _sim) : m_uri{move(uri)} {
     boost::asio::ip::address address = boost::asio::ip::address::from_string(m_host, ec);
     if (!ec) {
         // This is a valid Ip Address
-        if (address.is_v4())
-            m_hostType = UriHostNameType::IPV4;
-        if (address.is_v6())
-            m_hostType = UriHostNameType::IPV6;
+        if (address.is_v4()) m_hostType = UriHostNameType::IPV4;
+        if (address.is_v6()) m_hostType = UriHostNameType::IPV6;
 
         m_isLoopBack = address.is_loopback();
     } else {
         // Check if valid DNS hostname
-        regex hostNamePattern("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-"
-                              "Za-z0-9\\-]*[A-Za-z0-9])$");
-        if (regex_match(m_host, hostNamePattern))
-            m_hostType = UriHostNameType::Dns;
+        std::regex hostNamePattern(R"(^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$)");
+        if (regex_match(m_host, hostNamePattern)) m_hostType = UriHostNameType::Dns;
         else
             m_hostType = UriHostNameType::Basic;
     }
 
-    if (!m_user.empty())
-        boost::replace_all(m_user, "`", "");
-    if (!m_password.empty())
-        boost::replace_all(m_password, "`", "");
-    if (!m_worker.empty())
-        boost::replace_all(m_worker, "`", "");
+    if (!m_user.empty()) boost::replace_all(m_user, "`", "");
+    if (!m_password.empty()) boost::replace_all(m_password, "`", "");
+    if (!m_worker.empty()) boost::replace_all(m_worker, "`", "");
 
     // Eventually decode every encoded char
     string tmpStr;
-    if (url_decode(m_userinfo, tmpStr))
-        m_userinfo = tmpStr;
-    if (url_decode(m_urlinfo, tmpStr))
-        m_urlinfo = tmpStr;
-    if (url_decode(m_hostinfo, tmpStr))
-        m_hostinfo = tmpStr;
-    if (url_decode(m_pathinfo, tmpStr))
-        m_pathinfo = tmpStr;
+    if (url_decode(m_userinfo, tmpStr)) m_userinfo = tmpStr;
+    if (url_decode(m_urlinfo, tmpStr)) m_urlinfo = tmpStr;
+    if (url_decode(m_hostinfo, tmpStr)) m_hostinfo = tmpStr;
+    if (url_decode(m_pathinfo, tmpStr)) m_pathinfo = tmpStr;
 
-    if (url_decode(m_path, tmpStr))
-        m_path = tmpStr;
-    if (url_decode(m_query, tmpStr))
-        m_query = tmpStr;
-    if (url_decode(m_fragment, tmpStr))
-        m_fragment = tmpStr;
-    if (url_decode(m_user, tmpStr))
-        m_user = tmpStr;
-    if (url_decode(m_password, tmpStr))
-        m_password = tmpStr;
-    if (url_decode(m_worker, tmpStr))
-        m_worker = tmpStr;
+    if (url_decode(m_path, tmpStr)) m_path = tmpStr;
+    if (url_decode(m_query, tmpStr)) m_query = tmpStr;
+    if (url_decode(m_fragment, tmpStr)) m_fragment = tmpStr;
+    if (url_decode(m_user, tmpStr)) m_user = tmpStr;
+    if (url_decode(m_password, tmpStr)) m_password = tmpStr;
+    if (url_decode(m_worker, tmpStr)) m_worker = tmpStr;
 }
 
 ProtocolFamily URI::Family() const { return s_schemes[m_scheme].family; }
@@ -324,8 +291,7 @@ unsigned URI::Version() const { return s_schemes[m_scheme].version; }
 
 string URI::UserDotWorker() const {
     string _ret = m_user;
-    if (!m_worker.empty())
-        _ret.append("." + m_worker);
+    if (!m_worker.empty()) _ret.append("." + m_worker);
     return _ret;
 }
 
@@ -337,9 +303,8 @@ bool URI::IsLoopBack() const { return m_isLoopBack; }
 
 string URI::KnownSchemes(ProtocolFamily family) {
     string schemes;
-    for (const auto& s : s_schemes) {
-        if ((s.second.family == family) && (s.second.version != 999))
-            schemes += s.first + " ";
+    for (const auto& s: s_schemes) {
+        if ((s.second.family == family) && (s.second.version != 999)) schemes += s.first + " ";
     }
     return schemes;
 }

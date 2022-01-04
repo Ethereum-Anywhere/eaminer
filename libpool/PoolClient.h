@@ -12,30 +12,26 @@
 #include <queue>
 
 #include <boost/asio/ip/address.hpp>
+#include <utility>
 
 #include <libeth/Miner.h>
 #include <libpool/PoolURI.h>
 
 extern boost::asio::io_service g_io_service;
 
-using namespace std;
+//using namespace std;
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 struct Session {
     // Tstamp of sessio start
-    chrono::steady_clock::time_point start = chrono::steady_clock::now();
-    // Whether or not worker is subscribed
-    atomic<bool> subscribed = {false};
-    // Whether or not worker is authorized
-    atomic<bool> authorized = {false};
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    // Whether worker is subscribed
+    std::atomic<bool> subscribed = {false};
+    // Whether worker is authorized
+    std::atomic<bool> authorized = {false};
     // Total duration of session in minutes
-    unsigned long duration() {
-        return (chrono::duration_cast<chrono::minutes>(chrono::steady_clock::now() - start)).count();
-    }
-    uint64_t usDuration() {
-        return (chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - start)).count();
-    }
+    [[nodiscard]] unsigned long duration() const { return (std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start)).count(); }
+    [[nodiscard]] uint64_t usDuration() const { return (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start)).count(); }
 
     // EthereumStratum (1 and 2)
 
@@ -49,20 +45,20 @@ struct Session {
 
     // EthereumStratum (2 only)
     bool firstMiningSet = false;
-    unsigned int timeout = 30; // Default to 30 seconds
-    string sessionId = "";
-    string workerId = "";
+    unsigned int timeout = 30;   // Default to 30 seconds
+    std::string sessionId;
+    std::string workerId;
     unsigned int epoch = 0;
-    chrono::steady_clock::time_point lastTxStamp = chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point lastTxStamp = std::chrono::steady_clock::now();
 };
 
 class PoolClient {
-  public:
+public:
     virtual ~PoolClient() noexcept = default;
 
     // Sets the connection definition to be used by the client
     void setConnection(std::shared_ptr<URI> _conn) {
-        m_conn = _conn;
+        m_conn = std::move(_conn);
         m_conn->Responds(false);
     }
 
@@ -74,23 +70,21 @@ class PoolClient {
 
     virtual void connect() = 0;
     virtual void disconnect() = 0;
-    virtual void submitHashrate(uint64_t const& rate, string const& id) = 0;
+    virtual void submitHashrate(uint64_t const& rate, std::string const& id) = 0;
     virtual void submitSolution(const Solution& solution) = 0;
-    virtual bool isConnected() { return m_connected.load(memory_order_relaxed); }
+    virtual bool isConnected() { return m_connected.load(std::memory_order_relaxed); }
     virtual bool isPendingState() { return false; }
 
-    virtual bool isSubscribed() { return (m_session ? m_session->subscribed.load(memory_order_relaxed) : false); }
-    virtual bool isAuthorized() { return (m_session ? m_session->authorized.load(memory_order_relaxed) : false); }
+    virtual bool isSubscribed() { return m_session && m_session->subscribed.load(std::memory_order_relaxed); }
+    virtual bool isAuthorized() { return m_session && m_session->authorized.load(std::memory_order_relaxed); }
 
-    virtual string ActiveEndPoint() {
-        return (m_connected.load(memory_order_relaxed) ? " [" + toString(m_endpoint) + "]" : "");
-    }
+    virtual std::string ActiveEndPoint() { return (m_connected.load(std::memory_order_relaxed) ? " [" + toString(m_endpoint) + "]" : ""); }
 
-    using SolutionAccepted = function<void(chrono::milliseconds const&, unsigned const&, bool)>;
-    using SolutionRejected = function<void(chrono::milliseconds const&, unsigned const&)>;
-    using Disconnected = function<void()>;
-    using Connected = function<void()>;
-    using WorkReceived = function<void(WorkPackage const&)>;
+    using SolutionAccepted = std::function<void(std::chrono::milliseconds const&, unsigned const&, bool)>;
+    using SolutionRejected = std::function<void(std::chrono::milliseconds const&, unsigned const&)>;
+    using Disconnected = std::function<void()>;
+    using Connected = std::function<void()>;
+    using WorkReceived = std::function<void(WorkPackage const&)>;
 
     void onSolutionAccepted(SolutionAccepted const& _handler) { m_onSolutionAccepted = _handler; }
     void onSolutionRejected(SolutionRejected const& _handler) { m_onSolutionRejected = _handler; }
@@ -98,10 +92,10 @@ class PoolClient {
     void onConnected(Connected const& _handler) { m_onConnected = _handler; }
     void onWorkReceived(WorkReceived const& _handler) { m_onWorkReceived = _handler; }
 
-    unique_ptr<Session> m_session = nullptr;
+    std::unique_ptr<Session> m_session = nullptr;
 
-  protected:
-    std::atomic<bool> m_connected = {false}; // This is related to socket ! Not session
+protected:
+    std::atomic<bool> m_connected = {false};   // This is related to socket ! Not session
 
     boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> m_endpoint;
 
@@ -113,5 +107,4 @@ class PoolClient {
     Connected m_onConnected;
     WorkReceived m_onWorkReceived;
 };
-} // namespace eth
-} // namespace dev
+}   // namespace dev::eth

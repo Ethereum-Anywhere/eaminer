@@ -34,7 +34,7 @@ void Worker::startWorking() {
                 bool ok = m_state.compare_exchange_strong(ex, WorkerState::Started);
                 //				cnote << "Trying to set Started: Thread was" << (unsigned)ex << "; "
                 //<< ok;
-                (void)ok;
+                (void) ok;
 
                 try {
                     workLoop();
@@ -51,17 +51,14 @@ void Worker::startWorking() {
 
                 ex = m_state.exchange(WorkerState::Stopped);
                 //				cnote << "State: Stopped: Thread was" << (unsigned)ex;
-                if (ex == WorkerState::Killing || ex == WorkerState::Starting)
-                    m_state.exchange(ex);
+                if (ex == WorkerState::Killing || ex == WorkerState::Starting) m_state.exchange(ex);
 
-                while (m_state == WorkerState::Stopped)
-                    this_thread::sleep_for(chrono::milliseconds(20));
+                while (m_state == WorkerState::Stopped) this_thread::sleep_for(chrono::milliseconds(20));
             }
         }));
         //		cnote << "Spawning" << m_name;
     }
-    while (m_state == WorkerState::Starting)
-        this_thread::sleep_for(chrono::microseconds(20));
+    while (m_state == WorkerState::Starting) this_thread::sleep_for(chrono::microseconds(20));
 }
 
 void Worker::triggerStopWorking() {
@@ -78,8 +75,7 @@ void Worker::stopWorking() {
         WorkerState ex = WorkerState::Started;
         m_state.compare_exchange_strong(ex, WorkerState::Stopping);
 
-        while (m_state != WorkerState::Stopped)
-            this_thread::sleep_for(chrono::microseconds(20));
+        while (m_state != WorkerState::Stopped) this_thread::sleep_for(chrono::microseconds(20));
     }
 }
 

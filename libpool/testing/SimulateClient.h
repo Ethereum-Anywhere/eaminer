@@ -23,7 +23,7 @@ using namespace dev;
 using namespace eth;
 
 class SimulateClient : public PoolClient, Worker {
-  public:
+public:
     SimulateClient(unsigned const& block);
     ~SimulateClient() override;
 
@@ -34,7 +34,7 @@ class SimulateClient : public PoolClient, Worker {
     void submitHashrate(uint64_t const& rate, string const& id) override;
     void submitSolution(const Solution& solution) override;
 
-  private:
+private:
     void workLoop() override;
 
     unsigned m_block;

@@ -56,38 +56,27 @@ wrap_adl_handle* wrap_adl_create() {
         return nullptr;
     }
 
-    adlh = (wrap_adl_handle*)calloc(1, sizeof(wrap_adl_handle));
+    adlh = (wrap_adl_handle*) calloc(1, sizeof(wrap_adl_handle));
 
     adlh->adl_dll = adl_dll;
 
-    adlh->adlMainControlCreate =
-        (wrap_adlReturn_t(*)(ADL_MAIN_MALLOC_CALLBACK, int))wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Create");
-    adlh->adlAdapterNumberOfAdapters =
-        (wrap_adlReturn_t(*)(int*))wrap_dlsym(adlh->adl_dll, "ADL_Adapter_NumberOfAdapters_Get");
-    adlh->adlAdapterAdapterInfoGet =
-        (wrap_adlReturn_t(*)(LPAdapterInfo, int))wrap_dlsym(adlh->adl_dll, "ADL_Adapter_AdapterInfo_Get");
-    adlh->adlAdapterAdapterIdGet = (wrap_adlReturn_t(*)(int, int*))wrap_dlsym(adlh->adl_dll, "ADL_Adapter_ID_Get");
-    adlh->adlOverdrive5TemperatureGet =
-        (wrap_adlReturn_t(*)(int, int, ADLTemperature*))wrap_dlsym(adlh->adl_dll, "ADL_Overdrive5_Temperature_Get");
-    adlh->adlOverdrive5FanSpeedGet =
-        (wrap_adlReturn_t(*)(int, int, ADLFanSpeedValue*))wrap_dlsym(adlh->adl_dll, "ADL_Overdrive5_FanSpeed_Get");
-    adlh->adlMainControlRefresh = (wrap_adlReturn_t(*)(void))wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Refresh");
-    adlh->adlMainControlDestroy = (wrap_adlReturn_t(*)(void))wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
-    adlh->adl2MainControlCreate = (wrap_adlReturn_t(*)(ADL_MAIN_MALLOC_CALLBACK, int, ADL_CONTEXT_HANDLE*))wrap_dlsym(
-        adlh->adl_dll, "ADL2_Main_Control_Create");
-    adlh->adl2MainControlDestroy =
-        (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE))wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
-    adlh->adl2Overdrive6CurrentPowerGet = (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE, int, int, int*))wrap_dlsym(
-        adlh->adl_dll, "ADL2_Overdrive6_CurrentPower_Get");
-    adlh->adl2MainControlRefresh =
-        (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE))wrap_dlsym(adlh->adl_dll, "ADL2_Main_Control_Refresh");
+    adlh->adlMainControlCreate = (wrap_adlReturn_t(*)(ADL_MAIN_MALLOC_CALLBACK, int)) wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Create");
+    adlh->adlAdapterNumberOfAdapters = (wrap_adlReturn_t(*)(int*)) wrap_dlsym(adlh->adl_dll, "ADL_Adapter_NumberOfAdapters_Get");
+    adlh->adlAdapterAdapterInfoGet = (wrap_adlReturn_t(*)(LPAdapterInfo, int)) wrap_dlsym(adlh->adl_dll, "ADL_Adapter_AdapterInfo_Get");
+    adlh->adlAdapterAdapterIdGet = (wrap_adlReturn_t(*)(int, int*)) wrap_dlsym(adlh->adl_dll, "ADL_Adapter_ID_Get");
+    adlh->adlOverdrive5TemperatureGet = (wrap_adlReturn_t(*)(int, int, ADLTemperature*)) wrap_dlsym(adlh->adl_dll, "ADL_Overdrive5_Temperature_Get");
+    adlh->adlOverdrive5FanSpeedGet = (wrap_adlReturn_t(*)(int, int, ADLFanSpeedValue*)) wrap_dlsym(adlh->adl_dll, "ADL_Overdrive5_FanSpeed_Get");
+    adlh->adlMainControlRefresh = (wrap_adlReturn_t(*)(void)) wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Refresh");
+    adlh->adlMainControlDestroy = (wrap_adlReturn_t(*)(void)) wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
+    adlh->adl2MainControlCreate = (wrap_adlReturn_t(*)(ADL_MAIN_MALLOC_CALLBACK, int, ADL_CONTEXT_HANDLE*)) wrap_dlsym(adlh->adl_dll, "ADL2_Main_Control_Create");
+    adlh->adl2MainControlDestroy = (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE)) wrap_dlsym(adlh->adl_dll, "ADL_Main_Control_Destroy");
+    adlh->adl2Overdrive6CurrentPowerGet = (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE, int, int, int*)) wrap_dlsym(adlh->adl_dll, "ADL2_Overdrive6_CurrentPower_Get");
+    adlh->adl2MainControlRefresh = (wrap_adlReturn_t(*)(ADL_CONTEXT_HANDLE)) wrap_dlsym(adlh->adl_dll, "ADL2_Main_Control_Refresh");
 
-    if (adlh->adlMainControlCreate == nullptr || adlh->adlMainControlDestroy == nullptr ||
-        adlh->adlMainControlRefresh == nullptr || adlh->adlAdapterNumberOfAdapters == nullptr ||
-        adlh->adlAdapterAdapterInfoGet == nullptr || adlh->adlAdapterAdapterIdGet == nullptr ||
-        adlh->adlOverdrive5TemperatureGet == nullptr || adlh->adlOverdrive5FanSpeedGet == nullptr ||
-        adlh->adl2MainControlCreate == nullptr || adlh->adl2MainControlRefresh == nullptr ||
-        adlh->adl2MainControlDestroy == nullptr || adlh->adl2Overdrive6CurrentPowerGet == nullptr) {
+    if (adlh->adlMainControlCreate == nullptr || adlh->adlMainControlDestroy == nullptr || adlh->adlMainControlRefresh == nullptr ||
+        adlh->adlAdapterNumberOfAdapters == nullptr || adlh->adlAdapterAdapterInfoGet == nullptr || adlh->adlAdapterAdapterIdGet == nullptr ||
+        adlh->adlOverdrive5TemperatureGet == nullptr || adlh->adlOverdrive5FanSpeedGet == nullptr || adlh->adl2MainControlCreate == nullptr ||
+        adlh->adl2MainControlRefresh == nullptr || adlh->adl2MainControlDestroy == nullptr || adlh->adl2Overdrive6CurrentPowerGet == nullptr) {
         cwarn << "Failed to obtain all required ADL function pointers";
         cwarn << "AMD hardware monitoring disabled";
 
@@ -107,13 +96,13 @@ wrap_adl_handle* wrap_adl_create() {
     int logicalGpuCount = 0;
     adlh->adlAdapterNumberOfAdapters(&logicalGpuCount);
 
-    adlh->phys_logi_device_id = (int*)calloc(logicalGpuCount, sizeof(int));
+    adlh->phys_logi_device_id = (int*) calloc(logicalGpuCount, sizeof(int));
 
     adlh->adl_gpucount = 0;
     int last_adapter = 0;
     if (logicalGpuCount > 0) {
         adlh->log_gpucount = logicalGpuCount;
-        adlh->devs = (LPAdapterInfo)malloc(sizeof(AdapterInfo) * logicalGpuCount);
+        adlh->devs = (LPAdapterInfo) malloc(sizeof(AdapterInfo) * logicalGpuCount);
         memset(adlh->devs, '\0', sizeof(AdapterInfo) * logicalGpuCount);
 
         adlh->devs->iSize = sizeof(adlh->devs);
@@ -134,15 +123,11 @@ wrap_adl_handle* wrap_adl_create() {
 
             res = adlh->adlAdapterAdapterIdGet(adapterIndex, &adapterID);
 
-            if (res != WRAPADL_OK) {
-                continue;
-            }
+            if (res != WRAPADL_OK) { continue; }
 
             adlh->phys_logi_device_id[adlh->adl_gpucount] = adapterIndex;
 
-            if (adapterID == last_adapter) {
-                continue;
-            }
+            if (adapterID == last_adapter) { continue; }
 
             last_adapter = adapterID;
             adlh->adl_gpucount++;
@@ -166,35 +151,30 @@ int wrap_adl_get_gpucount(wrap_adl_handle* adlh, int* gpucount) {
 }
 
 int wrap_adl_get_gpu_name(wrap_adl_handle* adlh, int gpuindex, char* namebuf, int bufsize) {
-    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount)
-        return -1;
+    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount) return -1;
 
     memcpy(namebuf, adlh->devs[adlh->phys_logi_device_id[gpuindex]].strAdapterName, bufsize);
     return 0;
 }
 
 int wrap_adl_get_gpu_pci_id(wrap_adl_handle* adlh, int gpuindex, char* idbuf, int bufsize) {
-    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount)
-        return -1;
+    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount) return -1;
 
     char buf[256];
     sprintf(buf, "%04x:%02x:%02x",
-            0, // Is probably 0
-            adlh->devs[adlh->phys_logi_device_id[gpuindex]].iBusNumber,
-            adlh->devs[adlh->phys_logi_device_id[gpuindex]].iDeviceNumber);
+            0,   // Is probably 0
+            adlh->devs[adlh->phys_logi_device_id[gpuindex]].iBusNumber, adlh->devs[adlh->phys_logi_device_id[gpuindex]].iDeviceNumber);
     memcpy(idbuf, buf, bufsize);
     return 0;
 }
 
 int wrap_adl_get_tempC(wrap_adl_handle* adlh, int gpuindex, unsigned int* tempC) {
 
-    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount)
-        return -1;
+    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount) return -1;
 
     ADLTemperature* temperature = new ADLTemperature();
 
-    if (adlh->adlOverdrive5TemperatureGet(adlh->phys_logi_device_id[gpuindex], 0, temperature) != WRAPADL_OK)
-        return -1;
+    if (adlh->adlOverdrive5TemperatureGet(adlh->phys_logi_device_id[gpuindex], 0, temperature) != WRAPADL_OK) return -1;
 
     *tempC = unsigned(temperature->iTemperature / 1000);
     delete temperature;
@@ -203,13 +183,11 @@ int wrap_adl_get_tempC(wrap_adl_handle* adlh, int gpuindex, unsigned int* tempC)
 
 int wrap_adl_get_mem_tempC(wrap_adl_handle* adlh, int gpuindex, unsigned int* tempC) {
 
-    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount)
-        return -1;
+    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount) return -1;
 
     ADLTemperature* temperature = new ADLTemperature();
 
-    if (adlh->adlOverdrive5TemperatureGet(adlh->phys_logi_device_id[gpuindex], 1, temperature) != WRAPADL_OK)
-        return -1;
+    if (adlh->adlOverdrive5TemperatureGet(adlh->phys_logi_device_id[gpuindex], 1, temperature) != WRAPADL_OK) return -1;
 
     *tempC = unsigned(temperature->iTemperature / 1000);
     delete temperature;
@@ -218,14 +196,12 @@ int wrap_adl_get_mem_tempC(wrap_adl_handle* adlh, int gpuindex, unsigned int* te
 
 int wrap_adl_get_fanpcnt(wrap_adl_handle* adlh, int gpuindex, unsigned int* fanpcnt) {
 
-    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount)
-        return -1;
+    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount) return -1;
 
     ADLFanSpeedValue* fan = new ADLFanSpeedValue();
     fan->iSpeedType = 1;
 
-    if (adlh->adlOverdrive5FanSpeedGet(adlh->phys_logi_device_id[gpuindex], 0, fan) != WRAPADL_OK)
-        return -1;
+    if (adlh->adlOverdrive5FanSpeedGet(adlh->phys_logi_device_id[gpuindex], 0, fan) != WRAPADL_OK) return -1;
 
     *fanpcnt = unsigned(fan->iFanSpeed);
     delete fan;
@@ -234,15 +210,12 @@ int wrap_adl_get_fanpcnt(wrap_adl_handle* adlh, int gpuindex, unsigned int* fanp
 
 int wrap_adl_get_power_usage(wrap_adl_handle* adlh, int gpuindex, unsigned int* miliwatts) {
 
-    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount)
-        return -1;
+    if (gpuindex < 0 || gpuindex >= adlh->adl_gpucount) return -1;
 
     int power = 0;
-    if (adlh->adl2Overdrive6CurrentPowerGet(adlh->context, adlh->phys_logi_device_id[gpuindex], 0, &power) !=
-        WRAPADL_OK)
-        return -1;
+    if (adlh->adl2Overdrive6CurrentPowerGet(adlh->context, adlh->phys_logi_device_id[gpuindex], 0, &power) != WRAPADL_OK) return -1;
 
-    *miliwatts = (unsigned int)(power * 3.90625);
+    *miliwatts = (unsigned int) (power * 3.90625);
     return 0;
 }
 

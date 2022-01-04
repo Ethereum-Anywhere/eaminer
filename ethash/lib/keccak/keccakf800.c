@@ -4,18 +4,13 @@
 
 #include <ethash/keccak.h>
 
-static inline uint32_t rol(uint32_t x, unsigned s)
-{
-    return (x << s) | (x >> (32 - s));
-}
+static inline uint32_t rol(uint32_t x, unsigned s) { return (x << s) | (x >> (32 - s)); }
 
-static const uint32_t round_constants[22] = {  //
-    0x00000001, 0x00008082, 0x0000808A, 0x80008000, 0x0000808B, 0x80000001, 0x80008081, 0x00008009,
-    0x0000008A, 0x00000088, 0x80008009, 0x8000000A, 0x8000808B, 0x0000008B, 0x00008089, 0x00008003,
-    0x00008002, 0x00000080, 0x0000800A, 0x8000000A, 0x80008081, 0x00008080};
+static const uint32_t round_constants[22] = {   //
+        0x00000001, 0x00008082, 0x0000808A, 0x80008000, 0x0000808B, 0x80000001, 0x80008081, 0x00008009, 0x0000008A, 0x00000088, 0x80008009,
+        0x8000000A, 0x8000808B, 0x0000008B, 0x00008089, 0x00008003, 0x00008002, 0x00000080, 0x0000800A, 0x8000000A, 0x80008081, 0x00008080};
 
-void ethash_keccakf800(uint32_t state[25])
-{
+void ethash_keccakf800(uint32_t state[25]) {
     // The implementation directly translated from ethash_keccakf1600.
 
     uint32_t Aba, Abe, Abi, Abo, Abu;
@@ -60,8 +55,7 @@ void ethash_keccakf800(uint32_t state[25])
     Aso = state[23];
     Asu = state[24];
 
-    for (size_t n = 0; n < 22; n += 2)
-    {
+    for (size_t n = 0; n < 22; n += 2) {
         // Round (n + 0): Axx -> Exx
 
         Ba = Aba ^ Aga ^ Aka ^ Ama ^ Asa;

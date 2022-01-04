@@ -14,8 +14,10 @@
 
 #include <libeth/Farm.h>
 
+#include <utility>
+
 #ifndef HOST_NAME_MAX
-#define HOST_NAME_MAX 255
+#    define HOST_NAME_MAX 255
 #endif
 
 // Define grayscale palette
@@ -26,11 +28,9 @@
 #define HTTP_ROW1_COLOR "#ffffff"
 #define HTTP_ROWRED_COLOR "#f46542"
 
-using namespace std;
 
 /* helper functions getting values from a JSON request */
-static bool getRequestValue(const char* membername, bool& refValue, Json::Value& jRequest, bool optional,
-                            Json::Value& jResponse) {
+static bool getRequestValue(const char* membername, bool& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse) {
     if (!jRequest.isMember(membername)) {
         if (!optional) {
             jResponse["error"]["code"] = -32602;
@@ -52,8 +52,7 @@ static bool getRequestValue(const char* membername, bool& refValue, Json::Value&
     return true;
 }
 
-static bool getRequestValue(const char* membername, unsigned& refValue, Json::Value& jRequest, bool optional,
-                            Json::Value& jResponse) {
+static bool getRequestValue(const char* membername, unsigned& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse) {
     if (!jRequest.isMember(membername)) {
         if (!optional) {
             jResponse["error"]["code"] = -32602;
@@ -75,8 +74,7 @@ static bool getRequestValue(const char* membername, unsigned& refValue, Json::Va
     return true;
 }
 
-static bool getRequestValue(const char* membername, Json::Value& refValue, Json::Value& jRequest, bool optional,
-                            Json::Value& jResponse) {
+static bool getRequestValue(const char* membername, Json::Value& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse) {
     if (!jRequest.isMember(membername)) {
         if (!optional) {
             jResponse["error"]["code"] = -32602;
@@ -98,8 +96,7 @@ static bool getRequestValue(const char* membername, Json::Value& refValue, Json:
     return true;
 }
 
-static bool getRequestValue(const char* membername, string& refValue, Json::Value& jRequest, bool optional,
-                            Json::Value& jResponse) {
+static bool getRequestValue(const char* membername, string& refValue, Json::Value& jRequest, bool optional, Json::Value& jResponse) {
     if (!jRequest.isMember(membername)) {
         if (!optional) {
             jResponse["error"]["code"] = -32602;
@@ -134,7 +131,7 @@ static bool parseRequestId(Json::Value& jRequest, Json::Value& jResponse) {
 
     // NOTE: all errors have the same code (-32600) indicating this is an invalid request
 
-    // be sure id is there and it's not empty, otherwise raise an error
+    // be sure id is there, and it's not empty, otherwise raise an error
     if (!jRequest.isMember(membername) || jRequest[membername].empty()) {
         jResponse[membername] = Json::nullValue;
         jResponse["error"]["code"] = -32600;
@@ -162,7 +159,7 @@ static bool parseRequestId(Json::Value& jRequest, Json::Value& jResponse) {
 }
 
 ApiServer::ApiServer(string address, int portnum, string password)
-    : m_password(move(password)), m_address(address), m_acceptor(g_io_service), m_io_strand(g_io_service) {
+    : m_password(move(password)), m_address(std::move(address)), m_acceptor(g_io_service), m_io_strand(g_io_service) {
     if (portnum < 0) {
         m_portnumber = -portnum;
         m_readonly = true;
@@ -174,8 +171,7 @@ ApiServer::ApiServer(string address, int portnum, string password)
 
 void ApiServer::start() {
     // cnote << "ApiServer::start";
-    if (m_portnumber == 0)
-        return;
+    if (m_portnumber == 0) return;
 
     tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_address), m_portnumber);
 
@@ -193,16 +189,14 @@ void ApiServer::start() {
         return;
     }
 
-    cnote << "Api server listening on port " + to_string(m_acceptor.local_endpoint().port())
-          << (m_password.empty() ? "." : ". Authentication needed.");
+    cnote << "Api server listening on port " + to_string(m_acceptor.local_endpoint().port()) << (m_password.empty() ? "." : ". Authentication needed.");
     m_running.store(true, memory_order_relaxed);
-    m_workThread = thread{boost::bind(&ApiServer::begin_accept, this)};
+    m_workThread = thread{[this] { begin_accept(); }};
 }
 
 void ApiServer::stop() {
     // Exit if not started
-    if (!m_running.load(memory_order_relaxed))
-        return;
+    if (!m_running.load(memory_order_relaxed)) return;
 
     m_acceptor.cancel();
     m_acceptor.close();
@@ -214,12 +208,10 @@ void ApiServer::stop() {
 }
 
 void ApiServer::begin_accept() {
-    if (!isRunning())
-        return;
+    if (!isRunning()) return;
 
     auto session = make_shared<ApiConnection>(m_io_strand, ++lastSessionId, m_readonly, m_password);
-    m_acceptor.async_accept(session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session,
-                                                                            boost::asio::placeholders::error)));
+    m_acceptor.async_accept(session->socket(), m_io_strand.wrap(boost::bind(&ApiServer::handle_accept, this, session, boost::asio::placeholders::error)));
 }
 
 void ApiServer::handle_accept(shared_ptr<ApiConnection> session, boost::system::error_code ec) {
@@ -228,8 +220,7 @@ void ApiServer::handle_accept(shared_ptr<ApiConnection> session, boost::system::
     if (!ec) {
         session->onDisconnected([&](int id) {
             // Destroy pointer to session
-            auto it = find_if(m_sessions.begin(), m_sessions.end(),
-                              [&id](const shared_ptr<ApiConnection> session) { return session->getId() == id; });
+            auto it = find_if(m_sessions.begin(), m_sessions.end(), [&id](const shared_ptr<ApiConnection>& session) { return session->getId() == id; });
             if (it != m_sessions.end()) {
                 auto index = distance(m_sessions.begin(), it);
                 m_sessions.erase(m_sessions.begin() + index);
@@ -258,16 +249,13 @@ void ApiConnection::disconnect() {
         m_socket.close(ec);
     }
 
-    if (m_onDisconnected) {
-        m_onDisconnected(this->getId());
-    }
+    if (m_onDisconnected) { m_onDisconnected(this->getId()); }
 }
 
 ApiConnection::ApiConnection(boost::asio::io_service::strand& _strand, int id, bool readonly, string password)
     : m_sessionId(id), m_socket(g_io_service), m_io_strand(_strand), m_readonly(readonly), m_password(move(password)) {
     m_jSwBuilder.settings_["indentation"] = "";
-    if (!m_password.empty())
-        m_is_authenticated = false;
+    if (!m_password.empty()) m_is_authenticated = false;
 }
 
 void ApiConnection::start() {
@@ -279,13 +267,11 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     jResponse["jsonrpc"] = "2.0";
 
     // Strict sanity checks over jsonrpc v2
-    if (!parseRequestId(jRequest, jResponse))
-        return;
+    if (!parseRequestId(jRequest, jResponse)) return;
 
     string jsonrpc;
     string _method;
-    if (!getRequestValue("jsonrpc", jsonrpc, jRequest, false, jResponse) || jsonrpc != "2.0" ||
-        !getRequestValue("method", _method, jRequest, false, jResponse)) {
+    if (!getRequestValue("jsonrpc", jsonrpc, jRequest, false, jResponse) || jsonrpc != "2.0" || !getRequestValue("method", _method, jRequest, false, jResponse)) {
         jResponse["error"]["code"] = -32600;
         jResponse["error"]["message"] = "Invalid Request";
         return;
@@ -303,12 +289,10 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         m_is_authenticated = false; /* we allow api_authorize method even if already authenticated */
 
         Json::Value jRequestParams;
-        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
-            return;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse)) return;
 
         string psw;
-        if (!getRequestValue("psw", psw, jRequestParams, false, jResponse))
-            return;
+        if (!getRequestValue("psw", psw, jRequestParams, false, jResponse)) return;
 
         // max password length that we actually verify
         // (this limit can be removed by introducing a collision-resistant compressing hash,
@@ -316,17 +300,15 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         const int max_length = 500;
         char input_copy[max_length] = {0};
         char password_copy[max_length] = {0};
-        // note: copy() is not O(1) , but i don't think it matters
+        // note: copy() is not O(1) , but I don't think it matters
         psw.copy(&input_copy[0], max_length);
         // ps, the following line can be optimized to only run once on startup and thus save a
         // minuscule amount of cpu cycles.
         m_password.copy(&password_copy[0], max_length);
         int result = 0;
-        for (int i = 0; i < max_length; ++i)
-            result |= input_copy[i] ^ password_copy[i];
+        for (int i = 0; i < max_length; ++i) result |= input_copy[i] ^ password_copy[i];
 
-        if (result == 0)
-            m_is_authenticated = true;
+        if (result == 0) m_is_authenticated = true;
         else {
             // Use error code like http 401 Unauthorized
             jResponse["error"]["code"] = -401;
@@ -351,7 +333,7 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     else if (_method == "miner_ping") {
-        // Replies back to (check for liveness)
+        // Replies to (check for liveness)
         jResponse["result"] = "pong";
     }
 
@@ -359,15 +341,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
         // Send response to client of success
         // and invoke an async restart
         // to prevent locking
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
         jResponse["result"] = true;
         Farm::f().restart_async();
     }
 
     else if (_method == "miner_reboot") {
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
 
         jResponse["result"] = Farm::f().reboot({{"api_miner_reboot"}});
     }
@@ -378,16 +358,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     else if (_method == "miner_addconnection") {
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
 
         Json::Value jRequestParams;
-        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
-            return;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse)) return;
 
         string sUri;
-        if (!getRequestValue("uri", sUri, jRequestParams, false, jResponse))
-            return;
+        if (!getRequestValue("uri", sUri, jRequestParams, false, jResponse)) return;
 
         try {
             // If everything ok then add this new uri
@@ -400,12 +377,10 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     else if (_method == "miner_setactiveconnection") {
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
 
         Json::Value jRequestParams;
-        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
-            return;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse)) return;
         if (jRequestParams.isMember("index")) {
             unsigned index;
             if (getRequestValue("index", index, jRequestParams, false, jResponse)) {
@@ -443,16 +418,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     else if (_method == "miner_removeconnection") {
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
 
         Json::Value jRequestParams;
-        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
-            return;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse)) return;
 
         unsigned index;
-        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
-            return;
+        if (!getRequestValue("index", index, jRequestParams, false, jResponse)) return;
 
         try {
             PoolManager::p().removeConnection(index);
@@ -466,25 +438,20 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     else if (_method == "miner_pausegpu") {
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
 
         Json::Value jRequestParams;
-        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
-            return;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse)) return;
 
         unsigned index;
-        if (!getRequestValue("index", index, jRequestParams, false, jResponse))
-            return;
+        if (!getRequestValue("index", index, jRequestParams, false, jResponse)) return;
 
         bool pause;
-        if (!getRequestValue("pause", pause, jRequestParams, false, jResponse))
-            return;
+        if (!getRequestValue("pause", pause, jRequestParams, false, jResponse)) return;
 
         auto const& miner = Farm::f().getMiner(index);
         if (miner) {
-            if (pause)
-                miner->pause(MinerPauseEnum::PauseDueToAPIRequest);
+            if (pause) miner->pause(MinerPauseEnum::PauseDueToAPIRequest);
             else
                 miner->resume(MinerPauseEnum::PauseDueToAPIRequest);
 
@@ -497,16 +464,13 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     else if (_method == "miner_setverbosity") {
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
 
         Json::Value jRequestParams;
-        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
-            return;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse)) return;
 
         unsigned verbosity;
-        if (!getRequestValue("verbosity", verbosity, jRequestParams, false, jResponse))
-            return;
+        if (!getRequestValue("verbosity", verbosity, jRequestParams, false, jResponse)) return;
 
         if (verbosity >= LOG_NEXT) {
             jResponse["error"]["code"] = -422;
@@ -519,16 +483,14 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
     }
 
     else if (_method == "miner_setnonce") {
-        if (!checkApiWriteAccess(m_readonly, jResponse))
-            return;
+        if (!checkApiWriteAccess(m_readonly, jResponse)) return;
 
         Json::Value jRequestParams;
-        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse))
-            return;
+        if (!getRequestValue("params", jRequestParams, jRequest, false, jResponse)) return;
         if (jRequestParams.isMember("nonce")) {
             string nonce;
             if (getRequestValue("nonce", nonce, jRequestParams, false, jResponse)) {
-                for (const auto& c : nonce)
+                for (const auto& c: nonce)
                     if ((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F')) {
                         jResponse["error"]["code"] = -422;
                         jResponse["error"]["message"] = "Invalid nonce";
@@ -558,9 +520,9 @@ void ApiConnection::processRequest(Json::Value& jRequest, Json::Value& jResponse
 
 void ApiConnection::recvSocketData() {
     boost::asio::async_read(
-        m_socket, m_recvBuffer, boost::asio::transfer_at_least(1),
-        m_io_strand.wrap(boost::bind(&ApiConnection::onRecvSocketDataCompleted, this, boost::asio::placeholders::error,
-                                     boost::asio::placeholders::bytes_transferred)));
+            m_socket, m_recvBuffer, boost::asio::transfer_at_least(1),
+            m_io_strand.wrap(   //
+                    boost::bind(&ApiConnection::onRecvSocketDataCompleted, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
 }
 
 void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& ec, size_t bytes_transferred) {
@@ -570,7 +532,7 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
     2nd group : the path
     3rd group : HTTP version
     */
-    static regex http_pattern("^([A-Z]{1,6}) (\\/[\\S]*) (HTTP\\/1\\.[0-9]{1})");
+    static regex http_pattern(R"(^([A-Z]{1,6}) (\/[\S]*) (HTTP\/1\.[0-9]{1}))");
     smatch http_matches;
 
     if (!ec && bytes_transferred > 0) {
@@ -583,8 +545,7 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
         string linedelimiter;
         size_t linedelimiteroffset;
 
-        if (m_message.size() < 4)
-            return; // Wait for other data to come in
+        if (m_message.size() < 4) return;   // Wait for other data to come in
 
         if (regex_search(m_message, http_matches, http_pattern, regex_constants::match_default)) {
             // We got an HTTP request
@@ -631,7 +592,7 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
             // vector<string> lines;
             // boost::split(lines, m_message, [](char _c) { return _c == '\n'; });
 
-            stringstream ss; // Builder of the response
+            stringstream ss;   // Builder of the response
 
             if (http_method == "GET" && (http_path == "/" || http_path == "/getstat1" || http_path == "/metrics")) {
                 try {
@@ -681,8 +642,12 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
                         // Test validity of chunk and process
                         Json::Value jMsg;
                         Json::Value jRes;
-                        Json::Reader jRdr;
-                        if (jRdr.parse(line, jMsg)) {
+
+                        JSONCPP_STRING err;
+                        Json::CharReaderBuilder builder;
+                        const std::unique_ptr<Json::CharReader> jRdr(builder.newCharReader());
+
+                        if (jRdr->parse(line.c_str(), line.c_str() + line.length(), &jMsg, &err)) {
                             try {
                                 // Run in sync so no 2 different async reads may overlap
                                 processRequest(jMsg, jRes);
@@ -698,10 +663,9 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
                             jRes["jsonrpc"] = "2.0";
                             jRes["id"] = Json::Value::null;
                             jRes["error"]["errorcode"] = "-32700";
-                            string what = jRdr.getFormattedErrorMessages();
-                            boost::replace_all(what, "\n", " ");
-                            cwarn << "API : Got invalid Json message " << what;
-                            jRes["error"]["message"] = "Json parse error : " + what;
+                            boost::replace_all(err, "\n", " ");
+                            cwarn << "API : Got invalid Json message " << err;
+                            jRes["error"]["message"] = "Json parse error : " + err;
                         }
 
                         // Send response to client
@@ -715,8 +679,7 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
             }
 
             // Eventually keep reading from socket
-            if (m_socket.is_open())
-                recvSocketData();
+            if (m_socket.is_open()) recvSocketData();
         }
     } else {
         disconnect();
@@ -724,33 +687,28 @@ void ApiConnection::onRecvSocketDataCompleted(const boost::system::error_code& e
 }
 
 void ApiConnection::sendSocketData(Json::Value const& jReq, bool _disconnect) {
-    if (!m_socket.is_open())
-        return;
+    if (!m_socket.is_open()) return;
     stringstream line;
     line << Json::writeString(m_jSwBuilder, jReq) << endl;
     sendSocketData(line.str(), _disconnect);
 }
 
 void ApiConnection::sendSocketData(string const& _s, bool _disconnect) {
-    if (!m_socket.is_open())
-        return;
+    if (!m_socket.is_open()) return;
     ostream os(&m_sendBuffer);
     os << _s;
 
-    async_write(m_socket, m_sendBuffer,
-                m_io_strand.wrap(boost::bind(&ApiConnection::onSendSocketDataCompleted, this,
-                                             boost::asio::placeholders::error, _disconnect)));
+    async_write(m_socket, m_sendBuffer, m_io_strand.wrap(boost::bind(&ApiConnection::onSendSocketDataCompleted, this, boost::asio::placeholders::error, _disconnect)));
 }
 
 void ApiConnection::onSendSocketDataCompleted(const boost::system::error_code& ec, bool _disconnect) {
-    if (ec || _disconnect)
-        disconnect();
+    if (ec || _disconnect) disconnect();
 }
 
 Json::Value ApiConnection::getMinerStat1() {
     auto connection = PoolManager::p().getActiveConnection();
     TelemetryType t = Farm::f().Telemetry();
-    auto runningTime = chrono::duration_cast<chrono::minutes>(steady_clock::now() - t.start);
+    auto runningTime = chrono::duration_cast<chrono::minutes>(std::chrono::steady_clock::now() - t.start);
 
     ostringstream totalMhEth;
     ostringstream totalMhDcr;
@@ -761,46 +719,43 @@ Json::Value ApiConnection::getMinerStat1() {
     ostringstream poolAddresses;
     ostringstream invalidStats;
 
-    totalMhEth << fixed << setprecision(0) << t.farm.hashrate / 1000.0f << ";" << t.farm.solutions.accepted << ";"
-               << t.farm.solutions.rejected;
-    totalMhDcr << "0;0;0";                           // DualMining not supported
-    invalidStats << t.farm.solutions.failed << ";0"; // Invalid + Pool switches
+    totalMhEth << fixed << setprecision(0) << t.farm.hashrate / 1000.0f << ";" << t.farm.solutions.accepted << ";" << t.farm.solutions.rejected;
+    totalMhDcr << "0;0;0";                             // DualMining not supported
+    invalidStats << t.farm.solutions.failed << ";0";   // Invalid + Pool switches
     poolAddresses << connection->Host() << ':' << connection->Port();
-    invalidStats << ";0;0"; // DualMining not supported
+    invalidStats << ";0;0";   // DualMining not supported
 
     int gpuIndex;
     int numGpus = t.miners.size();
 
     for (gpuIndex = 0; gpuIndex < numGpus; gpuIndex++) {
-        detailedMhEth << fixed << setprecision(0) << t.miners.at(gpuIndex).hashrate / 1000.0f
-                      << (((numGpus - 1) > gpuIndex) ? ";" : "");
-        detailedMhDcr << "off" << (((numGpus - 1) > gpuIndex) ? ";" : ""); // DualMining not supported
+        detailedMhEth << fixed << setprecision(0) << t.miners.at(gpuIndex).hashrate / 1000.0f << (((numGpus - 1) > gpuIndex) ? ";" : "");
+        detailedMhDcr << "off" << (((numGpus - 1) > gpuIndex) ? ";" : "");   // DualMining not supported
         tempAndFans << t.miners.at(gpuIndex).sensors.tempC << ";" << t.miners.at(gpuIndex).sensors.fanP
-                    << (((numGpus - 1) > gpuIndex) ? ";" : ""); // Fetching Temp and Fans
-        memTemps << t.miners.at(gpuIndex).sensors.memtempC
-                 << (((numGpus - 1) > gpuIndex) ? ";" : ""); // Fetching Temp and Fans
+                    << (((numGpus - 1) > gpuIndex) ? ";" : "");                                          // Fetching Temp and Fans
+        memTemps << t.miners.at(gpuIndex).sensors.memtempC << (((numGpus - 1) > gpuIndex) ? ";" : "");   // Fetching Temp and Fans
     }
 
     Json::Value jRes;
 
-    jRes[0] = nsfminer_get_buildinfo()->project_name_with_version; // miner version.
-    jRes[1] = toString(runningTime.count());                       // running time, in minutes.
-    jRes[2] = totalMhEth.str();    // total ETH hashrate in MH/s, number of ETH shares, number of ETH
-                                   // rejected shares.
-    jRes[3] = detailedMhEth.str(); // detailed ETH hashrate for all GPUs.
-    jRes[4] = totalMhDcr.str();    // total DCR hashrate in MH/s, number of DCR shares, number of DCR
-                                   // rejected shares.
-    jRes[5] = detailedMhDcr.str(); // detailed DCR hashrate for all GPUs.
-    jRes[6] = tempAndFans.str();   // Temperature and Fan speed(%) pairs for all GPUs.
-    jRes[7] = poolAddresses.str(); // current mining pool. For dual mode, there will be two pools here.
-    jRes[8] = invalidStats.str();  // number of ETH invalid shares, number of ETH pool switches,
-                                   // number of DCR invalid shares, number of DCR pool switches.
-    jRes[9] = memTemps.str();      // Memory temps
+    jRes[0] = nsfminer_get_buildinfo()->project_name_with_version;   // miner version.
+    jRes[1] = toString(runningTime.count());                         // running time, in minutes.
+    jRes[2] = totalMhEth.str();                                      // total ETH hashrate in MH/s, number of ETH shares, number of ETH
+                                                                     // rejected shares.
+    jRes[3] = detailedMhEth.str();                                   // detailed ETH hashrate for all GPUs.
+    jRes[4] = totalMhDcr.str();                                      // total DCR hashrate in MH/s, number of DCR shares, number of DCR
+                                                                     // rejected shares.
+    jRes[5] = detailedMhDcr.str();                                   // detailed DCR hashrate for all GPUs.
+    jRes[6] = tempAndFans.str();                                     // Temperature and Fan speed(%) pairs for all GPUs.
+    jRes[7] = poolAddresses.str();                                   // current mining pool. For dual mode, there will be two pools here.
+    jRes[8] = invalidStats.str();                                    // number of ETH invalid shares, number of ETH pool switches,
+                                                                     // number of DCR invalid shares, number of DCR pool switches.
+    jRes[9] = memTemps.str();                                        // Memory temps
 
     return jRes;
 }
 
-Json::Value ApiConnection::getMinerStatDetailPerMiner(const TelemetryType& _t, shared_ptr<Miner> _miner) {
+Json::Value ApiConnection::getMinerStatDetailPerMiner(const TelemetryType& _t, const shared_ptr<Miner>& _miner) {
     unsigned _index = _miner->Index();
     chrono::steady_clock::time_point _now = chrono::steady_clock::now();
 
@@ -812,15 +767,14 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(const TelemetryType& _t, s
 
     /* Hardware Info */
     Json::Value hwinfo;
-    if (minerDescriptor.uniqueId.substr(0, 5) == "0000:")
+    if (minerDescriptor.uniqueId.substr(0, 5) == "0000:") {
         hwinfo["pci"] = minerDescriptor.uniqueId.substr(5);
-    else
+    } else {
         hwinfo["pci"] = minerDescriptor.uniqueId;
-    hwinfo["type"] = (minerDescriptor.type == DeviceTypeEnum::Gpu
-                          ? "GPU"
-                          : (minerDescriptor.type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
+    }
+    hwinfo["type"] = (minerDescriptor.type == DeviceTypeEnum::Gpu ? "GPU" : (minerDescriptor.type == DeviceTypeEnum::Accelerator ? "ACCELERATOR" : "CPU"));
     ostringstream ss;
-    ss << minerDescriptor.boardName << " " << dev::getFormattedMemory((double)minerDescriptor.totalMemory);
+    ss << minerDescriptor.boardName << " " << dev::getFormattedMemory((double) minerDescriptor.totalMemory);
     hwinfo["name"] = ss.str();
 
     /* Hardware Sensors*/
@@ -842,15 +796,15 @@ Json::Value ApiConnection::getMinerStatDetailPerMiner(const TelemetryType& _t, s
     jshares.append(_t.miners.at(_index).solutions.failed);
 
     auto solution_lastupdated = chrono::duration_cast<chrono::seconds>(_now - _t.miners.at(_index).solutions.tstamp);
-    jshares.append(uint64_t(solution_lastupdated.count())); // interval in seconds from last found
-                                                            // share
+    jshares.append(uint64_t(solution_lastupdated.count()));   // interval in seconds from last found
+                                                              // share
 
     mininginfo["shares"] = jshares;
     mininginfo["paused"] = _miner->paused();
     mininginfo["pause_reason"] = _miner->paused() ? _miner->pausedString() : Json::Value::null;
 
     /* Hash & Share infos */
-    mininginfo["hashrate"] = toHex((uint32_t)_t.miners.at(_index).hashrate, HexPrefix::Add);
+    mininginfo["hashrate"] = toHex((uint32_t) _t.miners.at(_index).hashrate, HexPrefix::Add);
 
     jRes["hardware"] = hwinfo;
     jRes["mining"] = mininginfo;
@@ -866,61 +820,56 @@ string ApiConnection::getHttpMinerMetrics() {
     ss << "host=" << jStat["host"]["name"] << ",version=" << jStat["host"]["version"];
     string labels = ss.str();
     stringstream _ret;
-    _ret
-        << "# HELP miner_process_runtime Number of seconds miner process has been running.\n"
-        << "# TYPE miner_process_runtime gauge\n"
-	    << "miner_process_runtime{" << labels << "} " << jStat["host"]["runtime"] << "\n"
-        << "# HELP miner_process_connected Connection status.\n"
-        << "# TYPE miner_process_connected gauge\n"
-	    << "miner_process_connected{" << labels << ",uri=" << jStat["connection"]["uri"] << "} " << jStat["connection"]["connected"].asUInt() << "\n"
-        << "# HELP miner_process_connection_switches Connection switches.\n"
-        << "# TYPE miner_process_connection_switches gauge\n"
-	    << "miner_process_connection_switches{" << labels << "} " << jStat["connection"]["switches"] << "\n";
+    _ret << "# HELP miner_process_runtime Number of seconds miner process has been running.\n"
+         << "# TYPE miner_process_runtime gauge\n"
+         << "miner_process_runtime{" << labels << "} " << jStat["host"]["runtime"] << "\n"
+         << "# HELP miner_process_connected Connection status.\n"
+         << "# TYPE miner_process_connected gauge\n"
+         << "miner_process_connected{" << labels << ",uri=" << jStat["connection"]["uri"] << "} " << jStat["connection"]["connected"].asUInt() << "\n"
+         << "# HELP miner_process_connection_switches Connection switches.\n"
+         << "# TYPE miner_process_connection_switches gauge\n"
+         << "miner_process_connection_switches{" << labels << "} " << jStat["connection"]["switches"] << "\n";
 
     // Per device help/type info.
 
     double total_power = 0;
     for (Json::Value::ArrayIndex i = 0; i != jStat["devices"].size(); i++) {
         Json::Value device = jStat["devices"][i];
-        ostringstream ss;
-        ss << labels
-           << ",id=\"" << device["_index"] << "\""
-           << ",name=" << device["hardware"]["name"]
-           << ",pci=" << device["hardware"]["pci"]
-           << ",device_type=" << device["hardware"]["type"]
+        ostringstream os;
+        os << labels << ",id=\"" << device["_index"] << "\""
+           << ",name=" << device["hardware"]["name"] << ",pci=" << device["hardware"]["pci"] << ",device_type=" << device["hardware"]["type"]
            << ",mode=" << device["_mode"];
-        string device_labels = ss.str();
+        string device_labels = os.str();
 
         double hashrate = stoul(device["mining"]["hashrate"].asString(), nullptr, 16);
         double power = device["hardware"]["sensors"][2].asDouble();
 
-        _ret
-            << "# HELP miner_device_hashrate Device hash rate in hashes/sec.\n"
-            << "# TYPE miner_device_hashrate gauge\n"
-            << "miner_device_hashrate{" << device_labels << "} " << hashrate << "\n"
-            << "# HELP miner_device_power_watts Device power draw in watts.\n"
-            << "# TYPE miner_device_power_watts gauge\n"
-            << "miner_device_power_watts{" << device_labels << "} " << power << "\n"
-            << "# HELP miner_device_temp_celsius Device temperature in degrees celsius.\n"
-            << "# TYPE miner_device_temp_celsius gauge\n"
-            << "miner_device_temp_celsius{" << device_labels << "} " << device["hardware"]["sensors"][0].asDouble() << "\n"
-            << "# HELP miner_device_memory_temp_celsius Memory temperature in degrees celsius.\n"
-            << "# TYPE miner_device_memory_temp_celsius gauge\n"
-            << "miner_device_memory_temp_celsius{" << device_labels << "} " << device["hardware"]["sensors"][3].asDouble() << "\n"
-            << "# HELP miner_device_fanspeed Device fanspeed (percentage 0-100).\n"
-            << "# TYPE miner_device_fanspeed gauge\n"
-            << "miner_device_fanspeed{" << device_labels << "} " << device["hardware"]["sensors"][1].asUInt() << "\n"
-            << "# HELP miner_device_shares_total Number of shares processed by devices and status (failed, found, or rejected).\n"
-            << "# TYPE miner_device_shares_total counter\n"
-            << "miner_device_shares_total{" << device_labels << ",status=\"found\"} " << device["mining"]["shares"][0].asUInt() << "\n"
-            << "miner_device_shares_total{" << device_labels << ",status=\"rejected\"} " << device["mining"]["shares"][1].asUInt() << "\n"
-            << "miner_device_shares_total{" << device_labels << ",status=\"failed\"} " << device["mining"]["shares"][2].asUInt() << "\n"
-            << "# HELP miner_device_shares_last_found_seconds Time since device last found share (seconds).\n"
-            << "# TYPE miner_device_shares_last_found_seconds gauge\n"
-            << "miner_device_shares_last_found_seconds{" << device_labels << "} " << device["mining"]["shares"][3].asUInt() << "\n"
-            << "# HELP miner_device_paused True if device is paused.\n"
-            << "# TYPE miner_device_paused gauge\n"
-            << "miner_device_paused{" << device_labels << "} " << (device["mining"]["paused"].asBool() ? 1 : 0) << "\n";
+        _ret << "# HELP miner_device_hashrate Device hash rate in hashes/sec.\n"
+             << "# TYPE miner_device_hashrate gauge\n"
+             << "miner_device_hashrate{" << device_labels << "} " << hashrate << "\n"
+             << "# HELP miner_device_power_watts Device power draw in watts.\n"
+             << "# TYPE miner_device_power_watts gauge\n"
+             << "miner_device_power_watts{" << device_labels << "} " << power << "\n"
+             << "# HELP miner_device_temp_celsius Device temperature in degrees celsius.\n"
+             << "# TYPE miner_device_temp_celsius gauge\n"
+             << "miner_device_temp_celsius{" << device_labels << "} " << device["hardware"]["sensors"][0].asDouble() << "\n"
+             << "# HELP miner_device_memory_temp_celsius Memory temperature in degrees celsius.\n"
+             << "# TYPE miner_device_memory_temp_celsius gauge\n"
+             << "miner_device_memory_temp_celsius{" << device_labels << "} " << device["hardware"]["sensors"][3].asDouble() << "\n"
+             << "# HELP miner_device_fanspeed Device fanspeed (percentage 0-100).\n"
+             << "# TYPE miner_device_fanspeed gauge\n"
+             << "miner_device_fanspeed{" << device_labels << "} " << device["hardware"]["sensors"][1].asUInt() << "\n"
+             << "# HELP miner_device_shares_total Number of shares processed by devices and status (failed, found, or rejected).\n"
+             << "# TYPE miner_device_shares_total counter\n"
+             << "miner_device_shares_total{" << device_labels << ",status=\"found\"} " << device["mining"]["shares"][0].asUInt() << "\n"
+             << "miner_device_shares_total{" << device_labels << ",status=\"rejected\"} " << device["mining"]["shares"][1].asUInt() << "\n"
+             << "miner_device_shares_total{" << device_labels << ",status=\"failed\"} " << device["mining"]["shares"][2].asUInt() << "\n"
+             << "# HELP miner_device_shares_last_found_seconds Time since device last found share (seconds).\n"
+             << "# TYPE miner_device_shares_last_found_seconds gauge\n"
+             << "miner_device_shares_last_found_seconds{" << device_labels << "} " << device["mining"]["shares"][3].asUInt() << "\n"
+             << "# HELP miner_device_paused True if device is paused.\n"
+             << "# TYPE miner_device_paused gauge\n"
+             << "miner_device_paused{" << device_labels << "} " << (device["mining"]["paused"].asBool() ? 1 : 0) << "\n";
 
         total_power += power;
     }
@@ -953,9 +902,9 @@ string ApiConnection::getHttpMinerMetrics() {
 string ApiConnection::getHttpMinerStatDetail() {
     Json::Value jStat = getMinerStatDetail();
     uint64_t durationSeconds = jStat["host"]["runtime"].asUInt64();
-    int hours = (int)(durationSeconds / 3600);
+    int hours = (int) (durationSeconds / 3600);
     durationSeconds -= (hours * 3600);
-    int minutes = (int)(durationSeconds / 60);
+    int minutes = (int) (durationSeconds / 60);
     int hoursSize = (hours > 9 ? (hours > 99 ? 3 : 2) : 1);
 
     /* Build up header*/
@@ -964,7 +913,7 @@ string ApiConnection::getHttpMinerStatDetail() {
          << "<html lang=en>"
          << "<head>"
          << "<meta charset=utf-8>"
-         << "<meta http-equiv=\"refresh\" content=\"30\">"
+         << R"(<meta http-equiv="refresh" content="30">)"
          << "<title>" << jStat["host"]["name"].asString() << "</title>"
          << "<style>"
          << "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,"
@@ -987,9 +936,8 @@ string ApiConnection::getHttpMinerStatDetail() {
          << "<table class=mx-auto>"
          << "<thead>"
          << "<tr class=bg-header1>"
-         << "<th colspan=9>" << jStat["host"]["version"].asString() << " - " << setw(hoursSize) << hours << ":"
-         << setw(2) << setfill('0') << fixed << minutes << "<br>Pool: " << jStat["connection"]["uri"].asString()
-         << "</th>"
+         << "<th colspan=9>" << jStat["host"]["version"].asString() << " - " << setw(hoursSize) << hours << ":" << setw(2) << setfill('0') << fixed << minutes
+         << "<br>Pool: " << jStat["connection"]["uri"].asString() << "</th>"
          << "</tr>"
          << "<tr class=bg-header0>"
          << "<th>PCI</th>"
@@ -1018,36 +966,34 @@ string ApiConnection::getHttpMinerStatDetail() {
         total_power += power;
         total_solutions += solutions;
 
-        _ret << "<tr" << (device["mining"]["paused"].asBool() ? " class=\"bg-red\"" : "") << ">"; // Open row
+        _ret << "<tr" << (device["mining"]["paused"].asBool() ? " class=\"bg-red\"" : "") << ">";   // Open row
 
         _ret << "<td>" << device["hardware"]["pci"].asString() << "</td>";
         _ret << "<td>" << device["hardware"]["name"].asString() << "</td>";
         _ret << "<td>" << device["_mode"].asString() << "</td>";
 
-        _ret << "<td>" << (device["mining"]["paused"].asBool() ? device["mining"]["pause_reason"].asString() : "No")
-             << "</td>";
+        _ret << "<td>" << (device["mining"]["paused"].asBool() ? device["mining"]["pause_reason"].asString() : "No") << "</td>";
 
         _ret << "<td class=right>" << dev::getFormattedHashes(hashrate) << "</td>";
 
-        string solString = "A" + device["mining"]["shares"][0].asString() + ":R" +
-                           device["mining"]["shares"][1].asString() + ":F" + device["mining"]["shares"][2].asString();
+        string solString =
+                "A" + device["mining"]["shares"][0].asString() + ":R" + device["mining"]["shares"][1].asString() + ":F" + device["mining"]["shares"][2].asString();
         _ret << "<td class=right>" << solString << "</td>";
         _ret << "<td class=right>" << device["hardware"]["sensors"][0].asString() << "</td>";
         _ret << "<td class=right>" << device["hardware"]["sensors"][1].asString() << "</td>";
 
-        stringstream powerStream; // Round the power to 2 decimal places to remove floating point
-                                  // garbage
+        stringstream powerStream;   // Round the power to 2 decimal places to remove floating point
+                                    // garbage
         powerStream << fixed << setprecision(2) << device["hardware"]["sensors"][2].asDouble();
         _ret << "<td class=right>" << powerStream.str() << "</td>";
 
-        _ret << "</tr>"; // Close row
+        _ret << "</tr>";   // Close row
     }
     _ret << "</tbody>";
 
     /* Summarize */
-    _ret << "<tfoot><tr class=bg-header0><td colspan=4 class=right>Total</td><td class=right>"
-         << dev::getFormattedHashes(total_hashrate) << "</td><td class=right>" << total_solutions
-         << "</td><td colspan=3 class=right>" << setprecision(2) << total_power << "</td></tfoot>";
+    _ret << "<tfoot><tr class=bg-header0><td colspan=4 class=right>Total</td><td class=right>" << dev::getFormattedHashes(total_hashrate) << "</td><td class=right>"
+         << total_solutions << "</td><td colspan=3 class=right>" << setprecision(2) << total_power << "</td></tfoot>";
 
     _ret << "</table></body></html>";
     return _ret.str();
@@ -1065,14 +1011,13 @@ Json::Value ApiConnection::getMinerStatDetail() {
 
     /* Host Info */
     Json::Value hostinfo;
-    hostinfo["version"] = nsfminer_get_buildinfo()->project_name_with_version; // miner version.
-    hostinfo["runtime"] = uint64_t(runningTime.count());                       // running time, in seconds.
+    hostinfo["version"] = nsfminer_get_buildinfo()->project_name_with_version;   // miner version.
+    hostinfo["runtime"] = uint64_t(runningTime.count());                         // running time, in seconds.
 
     {
         // Even the client should know which host was queried
         char hostName[HOST_NAME_MAX + 1];
-        if (!gethostname(hostName, HOST_NAME_MAX + 1))
-            hostinfo["name"] = hostName;
+        if (!gethostname(hostName, HOST_NAME_MAX + 1)) hostinfo["name"] = hostName;
         else
             hostinfo["name"] = Json::Value::null;
     }
@@ -1097,8 +1042,8 @@ Json::Value ApiConnection::getMinerStatDetail() {
     sharesinfo.append(t.farm.solutions.rejected);
     sharesinfo.append(t.farm.solutions.failed);
     auto solution_lastupdated = chrono::duration_cast<chrono::seconds>(now - t.farm.solutions.tstamp);
-    sharesinfo.append(uint64_t(solution_lastupdated.count())); // interval in seconds from last
-                                                               // found share
+    sharesinfo.append(uint64_t(solution_lastupdated.count()));   // interval in seconds from last
+                                                                 // found share
     mininginfo["shares"] = sharesinfo;
 
     /* Monitors Info */
@@ -1112,8 +1057,7 @@ Json::Value ApiConnection::getMinerStatDetail() {
     }
 
     /* Devices related info */
-    for (shared_ptr<Miner> miner : Farm::f().getMiners())
-        devices.append(getMinerStatDetailPerMiner(t, miner));
+    for (const shared_ptr<Miner>& miner: Farm::f().getMiners()) devices.append(getMinerStatDetailPerMiner(t, miner));
 
     jRes["devices"] = devices;
 

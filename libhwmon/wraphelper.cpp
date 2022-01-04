@@ -12,13 +12,13 @@
 
 #if defined(_WIN32)
 
-void* wrap_dlopen(const char* filename) { return (void*)LoadLibrary(filename); }
+void* wrap_dlopen(const char* filename) { return (void*) LoadLibrary(filename); }
 
-void* wrap_dlsym(void* h, const char* sym) { return (void*)GetProcAddress((HINSTANCE)h, sym); }
+void* wrap_dlsym(void* h, const char* sym) { return (void*) GetProcAddress((HINSTANCE) h, sym); }
 
 int wrap_dlclose(void* h) {
     /* FreeLibrary returns non-zero on success */
-    return (!FreeLibrary((HINSTANCE)h));
+    return (!FreeLibrary((HINSTANCE) h));
 }
 
 #else

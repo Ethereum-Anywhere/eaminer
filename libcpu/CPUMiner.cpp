@@ -30,7 +30,7 @@
 #include "CPUMiner.h"
 
 /* Sanity check for defined OS */
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 /* linux */
 #elif defined(_WIN32)
 /* windows */
@@ -38,7 +38,7 @@
 #error "Invalid OS configuration"
 #endif
 
-using namespace std;
+// using namespace std;
 using namespace dev;
 using namespace eth;
 
@@ -61,7 +61,7 @@ static size_t getTotalPhysAvailableMemory() {
         return 0;
     }
 
-    return (size_t)pages * (size_t)page_size;
+    return (size_t) pages * (size_t) page_size;
 #else
     MEMORYSTATUSEX memInfo;
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
@@ -81,8 +81,7 @@ unsigned CPUMiner::getNumDevices() {
     long cpus_available;
     cpus_available = sysconf(_SC_NPROCESSORS_ONLN);
     if (cpus_available == -1L) {
-        cwarn << "Error in func " << __FUNCTION__ << " at sysconf(_SC_NPROCESSORS_ONLN) \"" << strerror(errno)
-              << "\"\n";
+        cwarn << "Error in func " << __FUNCTION__ << " at sysconf(_SC_NPROCESSORS_ONLN) \"" << strerror(errno) << "\"\n";
         return 0;
     }
     return cpus_available;
@@ -107,7 +106,7 @@ CPUMiner::~CPUMiner() {
  */
 bool CPUMiner::initDevice() {
     cnote << "Using CPU: " << m_deviceDescriptor.cpCpuNumer << " " << m_deviceDescriptor.boardName
-          << " Memory : " << dev::getFormattedMemory((double)m_deviceDescriptor.totalMemory);
+          << " Memory : " << dev::getFormattedMemory((double) m_deviceDescriptor.totalMemory);
 
 #if defined(__linux__)
     cpu_set_t cpuset;
@@ -153,7 +152,7 @@ bool CPUMiner::initEpoch() {
      * miner should pause
 */
 void CPUMiner::kick_miner() {
-    m_new_work.store(true, memory_order_relaxed);
+    m_new_work.store(true, std::memory_order_relaxed);
     m_new_work_signal.notify_one();
 }
 
@@ -166,19 +165,18 @@ void CPUMiner::search(const dev::eth::WorkPackage& w) {
     auto nonce = w.startNonce;
 
     while (true) {
-        if (m_new_work.load(memory_order_relaxed)) // new work arrived ?
+        if (m_new_work.load(std::memory_order_relaxed))   // new work arrived ?
         {
-            m_new_work.store(false, memory_order_relaxed);
+            m_new_work.store(false, std::memory_order_relaxed);
             break;
         }
 
-        if (shouldStop())
-            break;
+        if (shouldStop()) break;
 
         auto r = ethash::search(context, header, boundary, nonce, blocksize);
         if (r.solution_found) {
             h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
-            auto sol = Solution{r.nonce, mix, w, chrono::steady_clock::now(), m_index};
+            auto sol = Solution{r.nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
             cnote << EthWhite << "Job: " << w.header.abridged() << " Solution: " << toHex(sol.nonce, HexPrefix::Add);
             Farm::f().submitProof(sol);
@@ -197,15 +195,14 @@ void CPUMiner::workLoop() {
     WorkPackage current;
     current.header = h256();
 
-    if (!initDevice())
-        return;
+    if (!initDevice()) return;
 
     while (!shouldStop()) {
         // Wait for work or 3 seconds (whichever the first)
         const WorkPackage w = work();
         if (!w) {
-            unique_lock<mutex> l(miner_work_mutex);
-            m_new_work_signal.wait_for(l, chrono::seconds(3));
+            std::unique_lock<std::mutex> l(miner_work_mutex);
+            m_new_work_signal.wait_for(l, std::chrono::seconds(3));
             continue;
         }
 
@@ -230,25 +227,23 @@ void CPUMiner::workLoop() {
     }
 }
 
-void CPUMiner::enumDevices(map<string, DeviceDescriptor>& _DevicesCollection) {
+void CPUMiner::enumDevices(std::map<std::string, DeviceDescriptor>& _DevicesCollection) {
     unsigned numDevices = getNumDevices();
 
     for (unsigned i = 0; i < numDevices; i++) {
-        string uniqueId;
-        ostringstream s;
+        std::string uniqueId;
+        std::ostringstream s;
         DeviceDescriptor deviceDescriptor;
 
         s << "cpu-" << i;
         uniqueId = s.str();
-        if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end())
-            deviceDescriptor = _DevicesCollection[uniqueId];
+        if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end()) deviceDescriptor = _DevicesCollection[uniqueId];
         else
             deviceDescriptor = DeviceDescriptor();
 
         s.str("");
         s.clear();
-        s << "ethash::eval()/boost " << (BOOST_VERSION / 100000) << "." << (BOOST_VERSION / 100 % 1000) << "."
-          << (BOOST_VERSION % 100);
+        s << "ethash::eval()/boost " << (BOOST_VERSION / 100000) << "." << (BOOST_VERSION / 100 % 1000) << "." << (BOOST_VERSION % 100);
         deviceDescriptor.boardName = s.str();
         deviceDescriptor.uniqueId = uniqueId;
         deviceDescriptor.type = DeviceTypeEnum::Cpu;

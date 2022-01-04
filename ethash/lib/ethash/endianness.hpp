@@ -41,12 +41,10 @@
 
 #endif
 
-namespace ethash
-{
+namespace ethash {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
-struct le
-{
+struct le {
     static uint32_t uint32(uint32_t x) noexcept { return x; }
     static uint64_t uint64(uint64_t x) noexcept { return x; }
 
@@ -55,45 +53,36 @@ struct le
     static const hash256& uint32s(const hash256& h) noexcept { return h; }
 };
 
-struct be
-{
+struct be {
     static uint64_t uint64(uint64_t x) noexcept { return bswap64(x); }
 };
 
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
-struct le
-{
+struct le {
     static uint32_t uint32(uint32_t x) noexcept { return bswap32(x); }
     static uint64_t uint64(uint64_t x) noexcept { return bswap64(x); }
 
-    static hash1024 uint32s(hash1024 h) noexcept
-    {
-        for (auto& w : h.word32s)
-            w = uint32(w);
+    static hash1024 uint32s(hash1024 h) noexcept {
+        for (auto& w: h.word32s) w = uint32(w);
         return h;
     }
 
-    static hash512 uint32s(hash512 h) noexcept
-    {
-        for (auto& w : h.word32s)
-            w = uint32(w);
+    static hash512 uint32s(hash512 h) noexcept {
+        for (auto& w: h.word32s) w = uint32(w);
         return h;
     }
 
-    static hash256 uint32s(hash256 h) noexcept
-    {
-        for (auto& w : h.word32s)
-            w = uint32(w);
+    static hash256 uint32s(hash256 h) noexcept {
+        for (auto& w: h.word32s) w = uint32(w);
         return h;
     }
 };
 
-struct be
-{
+struct be {
     static uint64_t uint64(uint64_t x) noexcept { return x; }
 };
 
 #endif
-}  // namespace ethash
+}   // namespace ethash

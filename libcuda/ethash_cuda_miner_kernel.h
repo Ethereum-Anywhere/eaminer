@@ -9,9 +9,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <sstream>
 #include <stdexcept>
-#include <stdint.h>
 #include <string>
 
 #include "cuda_runtime.h"
@@ -51,20 +51,19 @@ void set_constants(hash128_t* _dag, uint32_t _dag_size, hash64_t* _light, uint32
 void get_constants(hash128_t** _dag, uint32_t* _dag_size, hash64_t** _light, uint32_t* _light_size);
 void set_header(hash32_t _header);
 void set_target(uint64_t _target);
-void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream, Search_results* g_output,
-                       uint64_t start_nonce);
+void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream, Search_results* g_output, uint64_t start_nonce);
 void ethash_generate_dag(uint64_t dag_size, uint32_t blocks, uint32_t threads, cudaStream_t stream);
 
 struct cuda_runtime_error : public virtual std::runtime_error {
-    cuda_runtime_error(const std::string& msg) : std::runtime_error(msg) {}
+    explicit cuda_runtime_error(const std::string& msg) : std::runtime_error(msg) {}
 };
 
-#define CUDA_CALL(call)                                                                                                \
-    do {                                                                                                               \
-        cudaError_t err = call;                                                                                        \
-        if (cudaSuccess != err) {                                                                                      \
-            std::stringstream ss;                                                                                      \
-            ss << "CUDA error in func " << __FUNCTION__ << " at line " << __LINE__ << ' ' << cudaGetErrorString(err);  \
-            throw cuda_runtime_error(ss.str());                                                                        \
-        }                                                                                                              \
+#define CUDA_CALL(call)                                                                                                                                                  \
+    do {                                                                                                                                                                 \
+        cudaError_t err = call;                                                                                                                                          \
+        if (cudaSuccess != err) {                                                                                                                                        \
+            std::stringstream ss;                                                                                                                                        \
+            ss << "CUDA error in func " << __FUNCTION__ << " at line " << __LINE__ << ' ' << cudaGetErrorString(err);                                                    \
+            throw cuda_runtime_error(ss.str());                                                                                                                          \
+        }                                                                                                                                                                \
     } while (0)

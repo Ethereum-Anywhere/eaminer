@@ -22,11 +22,11 @@ extern std::random_device s_fixedHashEngine;
 /// Fixed-size raw-byte array container type, with an API optimised for storing hashes.
 /// Transparently converts to/from the corresponding arithmetic type; this will
 /// assume the data contained in the hash is big-endian.
-template <unsigned N> class FixedHash {
-  public:
+template<unsigned N> class FixedHash {
+public:
     /// The corresponding arithmetic type.
-    using Arith = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
-        N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+    using Arith = boost::multiprecision::number<
+            boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 
     /// The size of the container.
     enum { size = N };
@@ -41,43 +41,38 @@ template <unsigned N> class FixedHash {
     FixedHash() { m_data.fill(0); }
 
     /// Construct from another hash, filling with zeroes or cropping as necessary.
-    template <unsigned M> explicit FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) {
+    template<unsigned M> explicit FixedHash(FixedHash<M> const& _h, ConstructFromHashType _t = AlignLeft) {
         m_data.fill(0);
         unsigned c = std::min(M, N);
-        for (unsigned i = 0; i < c; ++i)
-            m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i];
+        for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _h[_t == AlignRight ? M - 1 - i : i];
     }
 
     /// Convert from the corresponding arithmetic type.
-    FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
+    explicit FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
 
     /// Convert from unsigned
     explicit FixedHash(unsigned _u) { toBigEndian(_u, m_data); }
 
     /// Explicitly construct, copying from a byte array.
     explicit FixedHash(bytes const& _b, ConstructFromHashType _t = FailIfDifferent) {
-        if (_b.size() == N)
-            memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N));
+        if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N));
         else {
             m_data.fill(0);
             if (_t != FailIfDifferent) {
                 auto c = std::min<unsigned>(_b.size(), N);
-                for (unsigned i = 0; i < c; ++i)
-                    m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i];
+                for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i];
             }
         }
     }
 
     /// Explicitly construct, copying from a byte array.
     explicit FixedHash(bytesConstRef _b, ConstructFromHashType _t = FailIfDifferent) {
-        if (_b.size() == N)
-            memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N));
+        if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N));
         else {
             m_data.fill(0);
             if (_t != FailIfDifferent) {
                 auto c = std::min<unsigned>(_b.size(), N);
-                for (unsigned i = 0; i < c; ++i)
-                    m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i];
+                for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i];
             }
         }
     }
@@ -101,10 +96,8 @@ template <unsigned N> class FixedHash {
     bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
     bool operator<(FixedHash const& _c) const {
         for (unsigned i = 0; i < N; ++i) {
-            if (m_data[i] < _c.m_data[i])
-                return true;
-            if (m_data[i] > _c.m_data[i])
-                return false;
+            if (m_data[i] < _c.m_data[i]) return true;
+            if (m_data[i] > _c.m_data[i]) return false;
         }
         return false;
     }
@@ -114,34 +107,29 @@ template <unsigned N> class FixedHash {
 
     // The obvious binary operators.
     FixedHash& operator^=(FixedHash const& _c) {
-        for (unsigned i = 0; i < N; ++i)
-            m_data[i] ^= _c.m_data[i];
+        for (unsigned i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i];
         return *this;
     }
     FixedHash operator^(FixedHash const& _c) const { return FixedHash(*this) ^= _c; }
     FixedHash& operator|=(FixedHash const& _c) {
-        for (unsigned i = 0; i < N; ++i)
-            m_data[i] |= _c.m_data[i];
+        for (unsigned i = 0; i < N; ++i) m_data[i] |= _c.m_data[i];
         return *this;
     }
     FixedHash operator|(FixedHash const& _c) const { return FixedHash(*this) |= _c; }
     FixedHash& operator&=(FixedHash const& _c) {
-        for (unsigned i = 0; i < N; ++i)
-            m_data[i] &= _c.m_data[i];
+        for (unsigned i = 0; i < N; ++i) m_data[i] &= _c.m_data[i];
         return *this;
     }
     FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
     FixedHash operator~() const {
         FixedHash ret;
-        for (unsigned i = 0; i < N; ++i)
-            ret[i] = ~m_data[i];
+        for (unsigned i = 0; i < N; ++i) ret[i] = ~m_data[i];
         return ret;
     }
 
     // Big-endian increment.
     FixedHash& operator++() {
-        for (unsigned i = size; i > 0 && !++m_data[--i];) {
-        }
+        for (unsigned i = size; i > 0 && !++m_data[--i];) {}
         return *this;
     }
 
@@ -170,9 +158,8 @@ template <unsigned N> class FixedHash {
     byte const* data() const { return m_data.data(); }
 
     /// Populate with random data.
-    template <class Engine> void randomize(Engine& _eng) {
-        for (auto& i : m_data)
-            i = (uint8_t)std::uniform_int_distribution<uint16_t>(0, 255)(_eng);
+    template<class Engine> void randomize(Engine& _eng) {
+        for (auto& i: m_data) i = (uint8_t) std::uniform_int_distribution<uint16_t>(0, 255)(_eng);
     }
 
     /// @returns a random valued object.
@@ -184,35 +171,32 @@ template <unsigned N> class FixedHash {
 
     struct hash {
         /// Make a hash of the object's data.
-        size_t operator()(FixedHash const& _value) const {
-            return boost::hash_range(_value.m_data.cbegin(), _value.m_data.cend());
-        }
+        size_t operator()(FixedHash const& _value) const { return boost::hash_range(_value.m_data.cbegin(), _value.m_data.cend()); }
     };
 
     void clear() { m_data.fill(0); }
 
-  private:
-    std::array<byte, N> m_data; ///< The binary data.
+private:
+    std::array<byte, N> m_data;   ///< The binary data.
 };
 
 /// Fast equality operator for h256.
-template <> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) const {
-    const uint64_t* hash1 = (const uint64_t*)data();
-    const uint64_t* hash2 = (const uint64_t*)_other.data();
+template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) const {
+    const auto* hash1 = (const uint64_t*) data();
+    const auto* hash2 = (const uint64_t*) _other.data();
     return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) && (hash1[3] == hash2[3]);
 }
 
 /// Fast std::hash compatible hash function object for h256.
-template <> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const {
+template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const {
     uint64_t const* data = reinterpret_cast<uint64_t const*>(value.data());
     return boost::hash_range(data, data + 4);
 }
 
 /// Stream I/O for the FixedHash class.
-template <unsigned N> inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h) {
+template<unsigned N> inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h) {
     _out << std::noshowbase << std::hex << std::setfill('0');
-    for (unsigned i = 0; i < N; ++i)
-        _out << std::setw(2) << (int)_h[i];
+    for (unsigned i = 0; i < N; ++i) _out << std::setw(2) << (int) _h[i];
     _out << std::dec;
     return _out;
 }
@@ -233,19 +217,18 @@ using h160s = std::vector<h160>;
 inline std::string toString(h256s const& _bs) {
     std::ostringstream out;
     out << "[ ";
-    for (auto i : _bs)
-        out << i.abridged() << ", ";
+    for (auto i: _bs) out << i.abridged() << ", ";
     out << "]";
     return out.str();
 }
 
-} // namespace dev
+}   // namespace dev
 
 namespace std {
 /// Forward std::hash<dev::FixedHash> to dev::FixedHash::hash.
-template <> struct hash<dev::h64> : dev::h64::hash {};
-template <> struct hash<dev::h128> : dev::h128::hash {};
-template <> struct hash<dev::h160> : dev::h160::hash {};
-template <> struct hash<dev::h256> : dev::h256::hash {};
-template <> struct hash<dev::h512> : dev::h512::hash {};
-} // namespace std
+template<> struct hash<dev::h64> : dev::h64::hash {};
+template<> struct hash<dev::h128> : dev::h128::hash {};
+template<> struct hash<dev::h160> : dev::h160::hash {};
+template<> struct hash<dev::h256> : dev::h256::hash {};
+template<> struct hash<dev::h512> : dev::h512::hash {};
+}   // namespace std

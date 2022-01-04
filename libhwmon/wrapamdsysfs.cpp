@@ -39,12 +39,11 @@ static bool getFileContentValue(const char* filename, unsigned int& value) {
     ifstream ifs(filename, ios::binary);
     string line;
     getline(ifs, line);
-    char* p = (char*)line.c_str();
+    char* p = (char*) line.c_str();
     char* p2;
     errno = 0;
     value = strtoul(p, &p2, 0);
-    if (errno != 0)
-        return false;
+    if (errno != 0) return false;
     return (p != p2);
 }
 
@@ -53,13 +52,12 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create() {
 
 #if defined(__linux)
     namespace fs = boost::filesystem;
-    vector<pciInfo> devices; // Used to collect devices
+    vector<pciInfo> devices;   // Used to collect devices
 
     char dbuf[120];
     // Check directory exist
     fs::path drm_dir("/sys/class/drm");
-    if (!fs::exists(drm_dir) || !fs::is_directory(drm_dir))
-        return nullptr;
+    if (!fs::exists(drm_dir) || !fs::is_directory(drm_dir)) return nullptr;
 
     // Regex patterns to identify directory elements
     regex cardPattern("^card[0-9]{1,}$");
@@ -68,8 +66,7 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create() {
     // Loop directory contents
     for (fs::directory_iterator dirEnt(drm_dir); dirEnt != fs::directory_iterator(); ++dirEnt) {
         // Skip non relevant entries
-        if (!fs::is_directory(dirEnt->path()) || !regex_match(dirEnt->path().filename().string(), cardPattern))
-            continue;
+        if (!fs::is_directory(dirEnt->path()) || !regex_match(dirEnt->path().filename().string(), cardPattern)) continue;
 
         string devName = dirEnt->path().filename().string();
         unsigned int devIndex = stoi(devName.substr(4), nullptr, 10);
@@ -79,31 +76,25 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create() {
         // Get AMD cards only (vendor 4098)
         fs::path vendor_file("/sys/class/drm/" + devName + "/device/vendor");
         snprintf(dbuf, 120, "/sys/class/drm/%s/device/vendor", devName.c_str());
-        if (!fs::exists(vendor_file) || !fs::is_regular_file(vendor_file) || !getFileContentValue(dbuf, vendorId) ||
-            vendorId != 4098)
-            continue;
+        if (!fs::exists(vendor_file) || !fs::is_regular_file(vendor_file) || !getFileContentValue(dbuf, vendorId) || vendorId != 4098) continue;
 
         // Check it has dependant hwmon directory
         fs::path hwmon_dir("/sys/class/drm/" + devName + "/device/hwmon");
-        if (!fs::exists(hwmon_dir) || !fs::is_directory(hwmon_dir))
-            continue;
+        if (!fs::exists(hwmon_dir) || !fs::is_directory(hwmon_dir)) continue;
 
         // Loop subelements in hwmon directory
         for (fs::directory_iterator hwmonEnt(hwmon_dir); hwmonEnt != fs::directory_iterator(); ++hwmonEnt) {
             // Skip non relevant entries
-            if (!fs::is_directory(hwmonEnt->path()) || !regex_match(hwmonEnt->path().filename().string(), hwmonPattern))
-                continue;
+            if (!fs::is_directory(hwmonEnt->path()) || !regex_match(hwmonEnt->path().filename().string(), hwmonPattern)) continue;
 
             unsigned int v = stoi(hwmonEnt->path().filename().string().substr(5), nullptr, 10);
             hwmonIndex = min(hwmonIndex, v);
         }
-        if (hwmonIndex == UINT_MAX)
-            continue;
+        if (hwmonIndex == UINT_MAX) continue;
 
         // Detect Pci Id
         fs::path uevent_file("/sys/class/drm/" + devName + "/device/uevent");
-        if (!fs::exists(uevent_file) || !fs::is_regular_file(uevent_file))
-            continue;
+        if (!fs::exists(uevent_file) || !fs::is_regular_file(uevent_file)) continue;
 
         snprintf(dbuf, 120, "/sys/class/drm/card%d/device/uevent", devIndex);
         ifstream ifs(dbuf, ios::binary);
@@ -120,16 +111,13 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create() {
                     PciBus = stoi(pciIdParts.at(1), nullptr, 16);
                     PciDevice = stoi(pciIdParts.at(2), nullptr, 16);
                     PciFunction = stoi(pciIdParts.at(3), nullptr, 16);
-                } catch (const exception&) {
-                    PciDomain = PciBus = PciDevice = PciFunction = -1;
-                }
+                } catch (const exception&) { PciDomain = PciBus = PciDevice = PciFunction = -1; }
                 break;
             }
         }
 
         // If we got an error skip
-        if (PciDomain == -1)
-            continue;
+        if (PciDomain == -1) continue;
 
         // We got all information needed
         // push in the list of collected devices
@@ -151,21 +139,21 @@ wrap_amdsysfs_handle* wrap_amdsysfs_create() {
 
     unsigned int gpucount = devices.size();
 
-    sysfsh = (wrap_amdsysfs_handle*)calloc(1, sizeof(wrap_amdsysfs_handle));
+    sysfsh = (wrap_amdsysfs_handle*) calloc(1, sizeof(wrap_amdsysfs_handle));
     if (sysfsh == nullptr) {
         cwarn << "Failed allocate memory";
         cwarn << "AMD hardware monitoring disabled";
         return sysfsh;
     }
     sysfsh->sysfs_gpucount = gpucount;
-    sysfsh->sysfs_device_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
-    sysfsh->sysfs_hwmon_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
-    sysfsh->sysfs_pci_domain_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
-    sysfsh->sysfs_pci_bus_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
-    sysfsh->sysfs_pci_device_id = (unsigned int*)calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_device_id = (unsigned int*) calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_hwmon_id = (unsigned int*) calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_pci_domain_id = (unsigned int*) calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_pci_bus_id = (unsigned int*) calloc(gpucount, sizeof(unsigned int));
+    sysfsh->sysfs_pci_device_id = (unsigned int*) calloc(gpucount, sizeof(unsigned int));
 
     gpucount = 0;
-    for (auto const& device : devices) {
+    for (auto const& device: devices) {
         sysfsh->sysfs_device_id[gpucount] = device.DeviceId;
         sysfsh->sysfs_hwmon_id[gpucount] = device.HwMonId;
         sysfsh->sysfs_pci_domain_id[gpucount] = device.PciDomain;
@@ -189,14 +177,12 @@ int wrap_amdsysfs_get_gpucount(wrap_amdsysfs_handle* sysfsh, int* gpucount) {
 }
 
 int wrap_amdsysfs_get_tempC(wrap_amdsysfs_handle* sysfsh, int index, unsigned int* tempC) {
-    if (index < 0 || index >= sysfsh->sysfs_gpucount)
-        return -1;
+    if (index < 0 || index >= sysfsh->sysfs_gpucount) return -1;
 
     int gpuindex = sysfsh->sysfs_device_id[index];
 
     int hwmonindex = sysfsh->sysfs_hwmon_id[index];
-    if (hwmonindex < 0)
-        return -1;
+    if (hwmonindex < 0) return -1;
 
     char dbuf[120];
     snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon/hwmon%d/temp1_input", gpuindex, hwmonindex);
@@ -204,21 +190,18 @@ int wrap_amdsysfs_get_tempC(wrap_amdsysfs_handle* sysfsh, int index, unsigned in
     unsigned int temp = 0;
     getFileContentValue(dbuf, temp);
 
-    if (temp > 0)
-        *tempC = temp / 1000;
+    if (temp > 0) *tempC = temp / 1000;
 
     return 0;
 }
 
 int wrap_amdsysfs_get_mem_tempC(wrap_amdsysfs_handle* sysfsh, int index, unsigned int* tempC) {
-    if (index < 0 || index >= sysfsh->sysfs_gpucount)
-        return -1;
+    if (index < 0 || index >= sysfsh->sysfs_gpucount) return -1;
 
     int gpuindex = sysfsh->sysfs_device_id[index];
 
     int hwmonindex = sysfsh->sysfs_hwmon_id[index];
-    if (hwmonindex < 0)
-        return -1;
+    if (hwmonindex < 0) return -1;
 
     char dbuf[120];
     snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon/hwmon%d/temp3_input", gpuindex, hwmonindex);
@@ -226,20 +209,17 @@ int wrap_amdsysfs_get_mem_tempC(wrap_amdsysfs_handle* sysfsh, int index, unsigne
     unsigned int temp = 0;
     getFileContentValue(dbuf, temp);
 
-    if (temp > 0)
-        *tempC = temp / 1000;
+    if (temp > 0) *tempC = temp / 1000;
 
     return 0;
 }
 
 int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle* sysfsh, int index, unsigned int* fanpcnt) {
-    if (index < 0 || index >= sysfsh->sysfs_gpucount)
-        return -1;
+    if (index < 0 || index >= sysfsh->sysfs_gpucount) return -1;
 
     int gpuindex = sysfsh->sysfs_device_id[index];
     int hwmonindex = sysfsh->sysfs_hwmon_id[index];
-    if (hwmonindex < 0)
-        return -1;
+    if (hwmonindex < 0) return -1;
 
     unsigned int pwm = 0, pwmMax = 255, pwmMin = 0;
 
@@ -253,14 +233,13 @@ int wrap_amdsysfs_get_fanpcnt(wrap_amdsysfs_handle* sysfsh, int index, unsigned 
     snprintf(dbuf, 120, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1_min", gpuindex, hwmonindex);
     getFileContentValue(dbuf, pwmMin);
 
-    *fanpcnt = (unsigned int)(double(pwm - pwmMin) / double(pwmMax - pwmMin) * 100.0);
+    *fanpcnt = (unsigned int) (double(pwm - pwmMin) / double(pwmMax - pwmMin) * 100.0);
     return 0;
 }
 
 int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle* sysfsh, int index, unsigned int* milliwatts) {
     try {
-        if (index < 0 || index >= sysfsh->sysfs_gpucount)
-            return -1;
+        if (index < 0 || index >= sysfsh->sysfs_gpucount) return -1;
 
         int gpuindex = sysfsh->sysfs_device_id[index];
 
@@ -276,14 +255,12 @@ int wrap_amdsysfs_get_power_usage(wrap_amdsysfs_handle* sysfsh, int index, unsig
             if (regex_search(line, sm, regex)) {
                 if (sm.size() == 2) {
                     double watt = atof(sm.str(1).c_str());
-                    *milliwatts = (unsigned int)(watt * 1000);
+                    *milliwatts = (unsigned int) (watt * 1000);
                     return 0;
                 }
             }
         }
-    } catch (const exception& ex) {
-        cwarn << "Error in amdsysfs_get_power_usage: " << ex.what();
-    }
+    } catch (const exception& ex) { cwarn << "Error in amdsysfs_get_power_usage: " << ex.what(); }
 
     return -1;
 }

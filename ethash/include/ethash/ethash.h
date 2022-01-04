@@ -32,8 +32,7 @@ extern "C" {
 #define ETHASH_NUM_DATASET_ACCESSES 64
 
 
-struct ethash_epoch_context
-{
+struct ethash_epoch_context {
     const int epoch_number;
     const int light_cache_num_items;
     const union ethash_hash512* const light_cache;
@@ -44,8 +43,7 @@ struct ethash_epoch_context
 struct ethash_epoch_context_full;
 
 
-struct ethash_result
-{
+struct ethash_result {
     union ethash_hash256 final_hash;
     union ethash_hash256 mix_hash;
 };
@@ -110,20 +108,16 @@ const struct ethash_epoch_context* ethash_get_global_epoch_context(int epoch_num
 /**
  * Get global shared epoch context with full dataset initialized.
  */
-const struct ethash_epoch_context_full* ethash_get_global_epoch_context_full(
-    int epoch_number) NOEXCEPT;
+const struct ethash_epoch_context_full* ethash_get_global_epoch_context_full(int epoch_number) NOEXCEPT;
 
 
-struct ethash_result ethash_hash(const struct ethash_epoch_context* context,
-    const union ethash_hash256* header_hash, uint64_t nonce) NOEXCEPT;
+struct ethash_result ethash_hash(const struct ethash_epoch_context* context, const union ethash_hash256* header_hash, uint64_t nonce) NOEXCEPT;
 
-bool ethash_verify(const struct ethash_epoch_context* context,
-    const union ethash_hash256* header_hash, const union ethash_hash256* mix_hash, uint64_t nonce,
-    const union ethash_hash256* boundary) NOEXCEPT;
+bool ethash_verify(const struct ethash_epoch_context* context, const union ethash_hash256* header_hash, const union ethash_hash256* mix_hash, uint64_t nonce,
+                   const union ethash_hash256* boundary) NOEXCEPT;
 
-bool ethash_verify_final_hash(const union ethash_hash256* header_hash,
-    const union ethash_hash256* mix_hash, uint64_t nonce,
-    const union ethash_hash256* boundary) NOEXCEPT;
+bool ethash_verify_final_hash(const union ethash_hash256* header_hash, const union ethash_hash256* mix_hash, uint64_t nonce,
+                              const union ethash_hash256* boundary) NOEXCEPT;
 
 #ifdef __cplusplus
 }

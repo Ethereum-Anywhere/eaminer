@@ -9,10 +9,9 @@
 #define ETHASH_VERSION "0.6.0"
 
 #ifdef __cplusplus
-namespace ethash
-{
+namespace ethash {
 /// The ethash library version.
 constexpr auto version = ETHASH_VERSION;
 
-}  // namespace ethash
+}   // namespace ethash
 #endif

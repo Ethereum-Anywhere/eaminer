@@ -7,8 +7,8 @@ add_library(ethash::keccak ALIAS keccak)
 target_compile_features(keccak PUBLIC c_std_99)
 target_include_directories(keccak PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_sources(keccak PRIVATE
-    ${PROJECT_SOURCE_DIR}/include/ethash/keccak.h
-    ${PROJECT_SOURCE_DIR}/include/ethash/keccak.hpp
-    keccak.c
-    keccakf800.c
-)
+        ${PROJECT_SOURCE_DIR}/include/ethash/keccak.h
+        ${PROJECT_SOURCE_DIR}/include/ethash/keccak.hpp
+        keccak.c
+        keccakf800.c
+        )

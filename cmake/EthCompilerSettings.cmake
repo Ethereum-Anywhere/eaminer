@@ -5,12 +5,13 @@ include(EthCheckCXXFlags)
 # C++11 check and activation
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wno-unknown-pragmas -Wextra")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=parentheses -pedantic")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=parentheses")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
     eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
     eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
     eth_add_cxx_compiler_flag_if_supported(-flto)
+    eth_add_cxx_linker_flag_if_supported(-pthread)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,-Map=nsfminer.map")
 
@@ -21,10 +22,11 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
     eth_add_cxx_compiler_flag_if_supported(-fdata-sections)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
+    eth_add_cxx_linker_flag_if_supported(-pthread)
 
     if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fcolor-diagnostics -Qunused-arguments")
-    endif()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fcolor-diagnostics -Qunused-arguments")
+    endif ()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
@@ -53,6 +55,6 @@ else ()
 endif ()
 
 set(SANITIZE NO CACHE STRING "Instrument build with provided sanitizer")
-if(SANITIZE)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=${SANITIZE}")
-endif()
+if (SANITIZE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=${SANITIZE}")
+endif ()

@@ -12,8 +12,7 @@
 
 #include "Miner.h"
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 
 DeviceDescriptor Miner::getDescriptor() { return m_deviceDescriptor; }
 
@@ -22,8 +21,7 @@ void Miner::setWork(WorkPackage const& _work) {
         lock_guard<mutex> l(miner_work_mutex);
 
         // Void work if this miner is paused
-        if (paused())
-            m_work.header = h256();
+        if (paused()) m_work.header = h256();
         else
             m_work = _work;
 #ifdef DEV_BUILD
@@ -33,25 +31,25 @@ void Miner::setWork(WorkPackage const& _work) {
     kick_miner();
 }
 
-void Miner::ReportSolution(const h256& header, uint64_t nonce) {
-    cnote << EthWhite << "Job: " << header.abridged() << " Solution: " << toHex(nonce, HexPrefix::Add);
-}
+void Miner::ReportSolution(const h256& header, uint64_t nonce) { cnote << EthWhite << "Job: " << header.abridged() << " Solution: " << toHex(nonce, HexPrefix::Add); }
 
 void Miner::ReportDAGDone(uint64_t dagSize, uint32_t dagTime, bool notSplit) {
-    cextr << dev::getFormattedMemory(float(dagSize)) << " of " << (notSplit ? "" : "(split) ")
-          << "DAG data generated in " << fixed << setprecision(1) << dagTime / 1000.0f << " seconds";
+    cextr << dev::getFormattedMemory(float(dagSize)) << " of " << (notSplit ? "" : "(split) ") << "DAG data generated in " << fixed << setprecision(1)
+          << dagTime / 1000.0f << " seconds";
 }
 
 void Miner::ReportGPUMemoryRequired(uint32_t lightSize, uint64_t dagSize, uint32_t misc) {
-    cextr << "Required GPU mem: Total " << dev::getFormattedMemory(float(lightSize + dagSize + misc)) << ", Cache "
-          << dev::getFormattedMemory(float(lightSize)) << ", DAG " << dev::getFormattedMemory(float(dagSize))
-          << ", Miscellaneous " << dev::getFormattedMemory(float(misc));
+    cextr << "Required GPU mem: Total " << dev::getFormattedMemory(float(lightSize + dagSize + misc)) << ", Cache " << dev::getFormattedMemory(float(lightSize))
+          << ", DAG " << dev::getFormattedMemory(float(dagSize)) << ", Miscellaneous " << dev::getFormattedMemory(float(misc));
 }
 
-void Miner::ReportGPUNoMemoryAndPause(string mem, uint64_t requiredMemory, uint64_t totalMemory) {
-    cwarn << "Epoch " << m_epochContext.epochNumber << " requires " << dev::getFormattedMemory((double)requiredMemory)
-          << " of " << mem << " memory from total of " << dev::getFormattedMemory((double)totalMemory)
-          << " available on device.";
+void Miner::ReportGPUNoMemoryAndPause(const string& mem, uint64_t requiredMemory, uint64_t totalMemory) {
+    cwarn << "Failed to allocate memory on GPU. Epoch " << m_epochContext.epochNumber << " requires " << dev::getFormattedMemory((double) requiredMemory) << " of " << mem
+          << " memory from total of " << dev::getFormattedMemory((double) totalMemory) << " available on device.";
+
+    if (requiredMemory < totalMemory) { cwarn << "Memory could be exhausted by another process running on the same device."; }
+
+
     pause(MinerPauseEnum::PauseDueToInsufficientMemory);
 }
 
@@ -77,12 +75,10 @@ string Miner::pausedString() {
     string retVar;
     if (m_pauseFlags.any()) {
         for (int i = 0; i < MinerPauseEnum::Pause_MAX; i++) {
-            if (m_pauseFlags[(MinerPauseEnum)i]) {
-                if (!retVar.empty())
-                    retVar.append("; ");
+            if (m_pauseFlags[(MinerPauseEnum) i]) {
+                if (!retVar.empty()) retVar.append("; ");
 
-                if (i == MinerPauseEnum::PauseDueToOverHeating)
-                    retVar.append("Overheating");
+                if (i == MinerPauseEnum::PauseDueToOverHeating) retVar.append("Overheating");
                 else if (i == MinerPauseEnum::PauseDueToAPIRequest)
                     retVar.append("Api request");
                 else if (i == MinerPauseEnum::PauseDueToFarmPaused)
@@ -112,8 +108,7 @@ float Miner::RetrieveHashRate() noexcept { return m_hashRate.load(memory_order_r
 
 void Miner::TriggerHashRateUpdate() noexcept {
     bool b = false;
-    if (m_hashRateUpdate.compare_exchange_weak(b, true))
-        return;
+    if (m_hashRateUpdate.compare_exchange_weak(b, true)) return;
     // GPU didn't respond to last trigger, assume it's dead.
     // This can happen on CUDA if:
     //   runtime of --cuda-grid-size * --cuda-streams exceeds time of m_collectInterval
@@ -129,8 +124,7 @@ void Miner::updateHashRate(uint32_t _groupSize, uint32_t _increment) noexcept {
     m_groupCount += _increment * _groupSize;
 
     bool b = true;
-    if (!m_hashRateUpdate.compare_exchange_weak(b, false))
-        return;
+    if (!m_hashRateUpdate.compare_exchange_weak(b, false)) return;
 
     using namespace chrono;
     auto t = steady_clock::now();
@@ -160,5 +154,4 @@ void Miner::freeCache() {
     }
 }
 
-} // namespace eth
-} // namespace dev
+}   // namespace dev::eth

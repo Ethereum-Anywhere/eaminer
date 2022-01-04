@@ -9,7 +9,7 @@
 
 #define FNV_PRIME 0x01000193
 
-#define fnv(x, y) ((x)*FNV_PRIME ^ (y))
+#define fnv(x, y) ((x) *FNV_PRIME ^ (y))
 
 DEV_INLINE uint4 fnv4(uint4 a, uint4 b) {
     uint4 c;

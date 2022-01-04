@@ -18,6 +18,7 @@
 #include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/process.hpp>
+#include <utility>
 
 #include <json/json.h>
 
@@ -38,12 +39,11 @@ using namespace boost::placeholders;
 
 extern boost::asio::io_service g_io_service;
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 struct FarmSettings {
-    unsigned hwMon = 0;      // 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
-    unsigned tempStart = 40; // Temperature threshold to restart mining (if paused)
-    unsigned tempStop = 0;   // Temperature threshold to pause mining (overheating)
+    unsigned hwMon = 0;        // 0 - No monitor; 1 - Temp and Fan; 2 - Temp Fan Power
+    unsigned tempStart = 40;   // Temperature threshold to restart mining (if paused)
+    unsigned tempStop = 0;     // Temperature threshold to pause mining (overheating)
     std::string nonce;
     unsigned cuBlockSize = 0;
     unsigned cuStreams = 0;
@@ -51,14 +51,14 @@ struct FarmSettings {
     bool clSplit = false;
 };
 
-typedef std::map<string, DeviceDescriptor> minerMap;
-typedef std::map<string, int> telemetryMap;
+typedef std::map<std::string, DeviceDescriptor> minerMap;
+typedef std::map<std::string, int> telemetryMap;
 
 class Farm {
-  public:
+public:
     unsigned tstart = 0, tstop = 0;
 
-    Farm(minerMap& _DevicesCollection, FarmSettings _settings);
+    Farm(minerMap& DevicesCollection, FarmSettings _settings);
 
     ~Farm();
 
@@ -73,18 +73,16 @@ class Farm {
     void restart();
     void restart_async();
     bool isMining() const { return m_isMining.load(std::memory_order_relaxed); }
-    bool reboot(const std::vector<std::string>& args);
+    static bool reboot(const std::vector<std::string>& args);
     TelemetryType& Telemetry() { return m_telemetry; }
-    float HashRate() { return m_telemetry.farm.hashrate; };
+    float HashRate() const { return m_telemetry.farm.hashrate; };
     std::vector<std::shared_ptr<Miner>> getMiners() { return m_miners; }
-    unsigned getMinersCount() { return (unsigned)m_miners.size(); };
+    unsigned getMinersCount() { return (unsigned) m_miners.size(); };
 
     std::shared_ptr<Miner> getMiner(unsigned index) {
         try {
             return m_miners.at(index);
-        } catch (const std::exception&) {
-            return nullptr;
-        }
+        } catch (const std::exception&) { return nullptr; }
     }
 
     void accountSolution(unsigned _minerIdx, SolutionAccountingEnum _accounting);
@@ -98,13 +96,13 @@ class Farm {
     void onMinerRestart(MinerRestart const& _handler) { m_onMinerRestart = _handler; }
 
     void setTStartTStop(unsigned tstart, unsigned tstop);
-    unsigned get_tstart() { return m_Settings.tempStart; }
-    unsigned get_tstop() { return m_Settings.tempStop; }
+    unsigned get_tstart() const { return m_Settings.tempStart; }
+    unsigned get_tstop() const { return m_Settings.tempStop; }
     void submitProof(Solution const& _s);
-    void set_nonce(std::string nonce) { m_Settings.nonce = nonce; }
-    std::string get_nonce() { return m_Settings.nonce; }
+    void set_nonce(std::string nonce) { m_Settings.nonce = std::move(nonce); }
+    std::string get_nonce() const { return m_Settings.nonce; }
 
-  private:
+private:
     std::atomic<bool> m_paused = {false};
 
     // Async submits solution serializing execution
@@ -114,22 +112,22 @@ class Farm {
     // Collects data about hashing and hardware status
     void collectData(const boost::system::error_code& ec);
 
-    bool spawn_file_in_bin_dir(const char* filename, const std::vector<std::string>& args);
+    static bool spawn_file_in_bin_dir(const char* filename, const std::vector<std::string>& args);
 
     mutable std::mutex farmWorkMutex;
-    std::vector<std::shared_ptr<Miner>> m_miners; // Collection of miners
+    std::vector<std::shared_ptr<Miner>> m_miners;   // Collection of miners
 
     WorkPackage m_currentWp;
     EpochContext m_currentEc;
 
     std::atomic<bool> m_isMining = {false};
 
-    TelemetryType m_telemetry; // Holds progress and status info for farm and miners
+    TelemetryType m_telemetry;   // Holds progress and status info for farm and miners
 
     SolutionFound m_onSolutionFound;
     MinerRestart m_onMinerRestart;
 
-    FarmSettings m_Settings; // Own Farm Settings
+    FarmSettings m_Settings;   // Own Farm Settings
 
     boost::asio::io_service::strand m_io_strand;
     boost::asio::deadline_timer m_collectTimer;
@@ -147,17 +145,16 @@ class Farm {
 
 #if defined(__linux)
     wrap_amdsysfs_handle* sysfsh = nullptr;
-    std::map<string, int> map_amdsysfs_handle = {};
+    std::map<std::string, int> map_amdsysfs_handle = {};
 #else
     wrap_adl_handle* adlh = nullptr;
-    std::map<string, int> map_adl_handle = {};
+    std::map<std::string, int> map_adl_handle = {};
 #endif
 
     static Farm* m_this;
     minerMap& m_DevicesCollection;
 
-    random_device m_engine;
+    std::random_device m_engine;
 };
 
-} // namespace eth
-} // namespace dev
+}   // namespace dev::eth

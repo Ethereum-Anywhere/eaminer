@@ -66,18 +66,18 @@ struct ExtraChannel : public LogChannel {
 };
 
 class LogOutputStreamBase {
-  public:
+public:
     LogOutputStreamBase(int error);
 
-    template <class T> void append(T const& _t) { m_sstr << _t; }
+    template<class T> void append(T const& _t) { m_sstr << _t; }
 
-  protected:
-    std::stringstream m_sstr; ///< The accrued log entry.
+protected:
+    std::stringstream m_sstr;   ///< The accrued log entry.
 };
 
 /// Logging class, iostream-like, that can be shifted to.
-template <class I> class LogOutputStream : LogOutputStreamBase {
-  public:
+template<class I> class LogOutputStream : LogOutputStreamBase {
+public:
     /// Construct a new object.
     /// If _term is true the the prefix info is terminated with a ']' character; if not it ends only
     /// with a '|' character.
@@ -87,7 +87,7 @@ template <class I> class LogOutputStream : LogOutputStreamBase {
     ~LogOutputStream() { simpleDebugOut(m_sstr.str()); }
 
     /// Shift arbitrary data to the log. Spaces will be added between items as required.
-    template <class T> LogOutputStream& operator<<(T const& _t) {
+    template<class T> LogOutputStream& operator<<(T const& _t) {
         append(_t);
         return *this;
     }
@@ -101,4 +101,4 @@ template <class I> class LogOutputStream : LogOutputStreamBase {
 #define cwarn clog(dev::WarnChannel)
 #define ccrit clog(dev::CritChannel)
 #define cextr clog(dev::ExtraChannel)
-} // namespace dev
+}   // namespace dev

@@ -15,6 +15,7 @@
 
 #define _PARALLEL_HASH 4
 
+
 DEV_INLINE bool compute_hash(uint64_t nonce) {
     // sha3_512(header .. nonce)
     uint2 state[12];
@@ -29,42 +30,40 @@ DEV_INLINE bool compute_hash(uint64_t nonce) {
 
     for (int i = 0; i < THREADS_PER_HASH; i += _PARALLEL_HASH) {
         uint4 mix[_PARALLEL_HASH];
-        uint32_t offset[_PARALLEL_HASH];
         uint32_t init0[_PARALLEL_HASH];
 
         // share init among threads
+        //#pragma unroll
         for (int p = 0; p < _PARALLEL_HASH; p++) {
             uint2 shuffle[8];
+            //#pragma unroll
             for (int j = 0; j < 8; j++) {
                 shuffle[j].x = SHFL(state[j].x, i + p, THREADS_PER_HASH);
                 shuffle[j].y = SHFL(state[j].y, i + p, THREADS_PER_HASH);
             }
             switch (mix_idx) {
-            case 0:
-                mix[p] = vectorize2(shuffle[0], shuffle[1]);
-                break;
-            case 1:
-                mix[p] = vectorize2(shuffle[2], shuffle[3]);
-                break;
-            case 2:
-                mix[p] = vectorize2(shuffle[4], shuffle[5]);
-                break;
-            case 3:
-                mix[p] = vectorize2(shuffle[6], shuffle[7]);
-                break;
+                case 0: mix[p] = vectorize2(shuffle[0], shuffle[1]); break;
+                case 1: mix[p] = vectorize2(shuffle[2], shuffle[3]); break;
+                case 2: mix[p] = vectorize2(shuffle[4], shuffle[5]); break;
+                case 3: mix[p] = vectorize2(shuffle[6], shuffle[7]); break;
             }
             init0[p] = SHFL(shuffle[0].x, 0, THREADS_PER_HASH);
         }
 
-        for (uint32_t a = 0; a < ACCESSES; a += 4) {
-            int t = bfe(a, 2u, 3u);
+        //#pragma unroll
+        for (int a = 0; a < ACCESSES; a += 4) {
+            uint32_t t = bfe(a, 2u, 3u);
 
-            for (uint32_t b = 0; b < 4; b++) {
+            //#pragma unroll
+            for (int b = 0; b < 4; b++) {
+                uint32_t offset[_PARALLEL_HASH];
+                //#pragma unroll
                 for (int p = 0; p < _PARALLEL_HASH; p++) {
-                    offset[p] = fnv(init0[p] ^ (a + b), ((uint32_t*)&mix[p])[b]) % d_dag_size;
+                    offset[p] = fnv(init0[p] ^ (a + b), (reinterpret_cast<const uint32_t*>(&mix[p]))[b]) % d_dag_size;
                     offset[p] = SHFL(offset[p], t, THREADS_PER_HASH);
-                    mix[p] = fnv4(mix[p], d_dag[offset[p]].uint4s[thread_id]);
                 }
+                //#pragma unroll
+                for (int p = 0; p < _PARALLEL_HASH; p++) { mix[p] = fnv4(mix[p], d_dag[offset[p]].uint4s[thread_id]); }
             }
         }
 
@@ -93,8 +92,7 @@ DEV_INLINE bool compute_hash(uint64_t nonce) {
     }
 
     // keccak_256(keccak_512(header..nonce) .. mix);
-    if (cuda_swab64(keccak_f1600_final(state)) > d_target)
-        return true;
+    if (cuda_swab64(keccak_f1600_final(state)) > d_target) return true;
 
     return false;
 }

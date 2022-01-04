@@ -22,7 +22,7 @@ namespace dev {
 enum class WorkerState { Starting, Started, Stopping, Stopped, Killing };
 
 class Worker {
-  public:
+public:
     Worker(std::string _name) : m_name(std::move(_name)) {}
 
     Worker(Worker const&) = delete;
@@ -42,13 +42,13 @@ class Worker {
     /// Whether or not this worker should stop
     bool shouldStop() const { return m_state != WorkerState::Started; }
 
-  private:
+private:
     virtual void workLoop() = 0;
 
     std::string m_name;
-    mutable std::mutex workerWorkMutex;  ///< Lock for the network existence.
-    std::unique_ptr<std::thread> m_work; ///< The network thread.
+    mutable std::mutex workerWorkMutex;    ///< Lock for the network existence.
+    std::unique_ptr<std::thread> m_work;   ///< The network thread.
     std::atomic<WorkerState> m_state = {WorkerState::Starting};
 };
 
-} // namespace dev
+}   // namespace dev

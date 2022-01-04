@@ -15,33 +15,26 @@
 
 #include "fnv.cuh"
 
-#define copy(dst, src, count)                                                                                          \
-    for (int i = 0; i != count; ++i) {                                                                                 \
-        (dst)[i] = (src)[i];                                                                                           \
-    }
+#define copy(dst, src, count)                                                                                                                                            \
+    for (int i = 0; i != count; ++i) { (dst)[i] = (src)[i]; }
 
 #include "keccak.cuh"
 
 #include "dagger_shuffled.cuh"
 
 __global__ void ethash_search(Search_results* g_output, uint64_t start_nonce) {
-    if (g_output->done)
-        return;
+    if (g_output->done) return;
     uint32_t const gid = blockIdx.x * blockDim.x + threadIdx.x;
     bool r = compute_hash(start_nonce + gid);
-    if (threadIdx.x == 0)
-        atomicInc((uint32_t*)&g_output->hashCount, 0xffffffff);
-    if (r)
-        return;
-    uint32_t index = atomicInc((uint32_t*)&g_output->solCount, 0xffffffff);
-    if (index >= MAX_SEARCH_RESULTS)
-        return;
+    if (threadIdx.x == 0) atomicInc((uint32_t*) &g_output->hashCount, 0xffffffff);
+    if (r) return;
+    uint32_t index = atomicInc((uint32_t*) &g_output->solCount, 0xffffffff);
+    if (index >= MAX_SEARCH_RESULTS) return;
     g_output->gid[index] = gid;
     g_output->done = 1;
 }
 
-void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream, Search_results* g_output,
-                       uint64_t start_nonce) {
+void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t stream, Search_results* g_output, uint64_t start_nonce) {
     ethash_search<<<gridSize, blockSize, 0, stream>>>(g_output, start_nonce);
     CUDA_CALL(cudaGetLastError());
 }
@@ -51,8 +44,7 @@ void run_ethash_search(uint32_t gridSize, uint32_t blockSize, cudaStream_t strea
 
 __global__ void ethash_calculate_dag_item(uint32_t start) {
     uint32_t const node_index = start + blockIdx.x * blockDim.x + threadIdx.x;
-    if (((node_index >> 1) & (~1)) >= d_dag_size)
-        return;
+    if (((node_index >> 1) & (~1)) >= d_dag_size) return;
     union {
         hash128_t dag_node;
         uint2 sha3_buf[25];
@@ -63,30 +55,28 @@ __global__ void ethash_calculate_dag_item(uint32_t start) {
 
     const int thread_id = threadIdx.x & 3;
 
-    for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
-        uint32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
-        for (uint32_t t = 0; t < 4; t++) {
+    for (int i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
+        int32_t parent_index = fnv(node_index ^ i, dag_node.words[i % NODE_WORDS]) % d_light_size;
+        for (int t = 0; t < 4; t++) {
             uint32_t shuffle_index = SHFL(parent_index, t, 4);
 
             uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
             for (int w = 0; w < 4; w++) {
                 uint4 s4 = make_uint4(SHFL(p4.x, w, 4), SHFL(p4.y, w, 4), SHFL(p4.z, w, 4), SHFL(p4.w, w, 4));
-                if (t == thread_id) {
-                    dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4);
-                }
+                if (t == thread_id) { dag_node.uint4s[w] = fnv4(dag_node.uint4s[w], s4); }
             }
         }
     }
     SHA3_512(sha3_buf);
-    hash64_t* dag_nodes = (hash64_t*)d_dag;
+    hash64_t* dag_nodes = (hash64_t*) d_dag;
     copy(dag_nodes[node_index].uint4s, dag_node.uint4s, 4);
 }
 
 void ethash_generate_dag(uint64_t dag_size, uint32_t gridSize, uint32_t blockSize, cudaStream_t stream) {
-    const uint32_t work = (uint32_t)(dag_size / sizeof(hash64_t));
-    const uint32_t run = gridSize * blockSize;
+    const auto work = (int32_t) (dag_size / sizeof(hash64_t));
+    const int64_t run = gridSize * blockSize;
 
-    uint32_t base;
+    int64_t base;
     for (base = 0; base <= work - run; base += run) {
         ethash_calculate_dag_item<<<gridSize, blockSize, 0, stream>>>(base);
         CUDA_CALL(cudaDeviceSynchronize());
