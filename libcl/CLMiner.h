@@ -22,7 +22,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #if __GNUC__ >= 6
-#pragma GCC diagnostic ignored "-Wignored-attributes"
+#    pragma GCC diagnostic ignored "-Wignored-attributes"
 #endif
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS false
@@ -35,32 +35,31 @@
 
 // macOS OpenCL fix:
 #ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
-#define CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV 0x4000
+#    define CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV 0x4000
 #endif
 
 #ifndef CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV
-#define CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV 0x4001
+#    define CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV 0x4001
 #endif
 
-#define CL_TARGET_BATCH_TIME 0.3F // seconds
+#define CL_TARGET_BATCH_TIME 0.3F   // seconds
 
-namespace dev {
-namespace eth {
+namespace dev { namespace eth {
 class CLMiner : public Miner {
-  public:
+public:
     CLMiner(unsigned _index, DeviceDescriptor& _device);
     ~CLMiner() override;
 
-    static void enumDevices(minerMap& _DevicesCollection);
+    static void enumDevices(minerMap& DevicesCollection);
 
-  protected:
+protected:
     bool initDevice() override;
 
     void kick_miner() override;
 
-  private:
+private:
     void workLoop() override;
-    bool initEpoch();
+    bool initEpoch() override;
 
     cl::Kernel m_searchKernel;
     cl::Kernel m_dagKernel;
@@ -114,5 +113,4 @@ class CLMiner : public Miner {
     std::mutex m_abortMutex;
 };
 
-} // namespace eth
-} // namespace dev
+}}   // namespace dev::eth
