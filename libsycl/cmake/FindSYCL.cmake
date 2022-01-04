@@ -2,9 +2,6 @@ set(A_SYCL_FOUND false)
 
 find_package(hipSYCL CONFIG)
 
-#[     {          "name": "My Compiler Kit",          "compilers":          {             "C": "/home/michel/sycl_workspace/deploy/bin/clang-13",             "CXX": "/home/michel/sycl_workspace/deploy/bin/clang++" },"environmentVariables":{"LD_PRELOAD":"/opt/intel/opencl/libOpenCL.so.1"}     } ]
-
-
 if (hipSYCL_FOUND)
     set(A_SYCL_FOUND true)
     if (NOT CMAKE_BUILD_TYPE)
@@ -25,20 +22,6 @@ if (hipSYCL_FOUND)
                     FORCE)
         endif ()
     endif ()
-endif ()
-
-
-if (ComputeCpp_DIR)
-    include(cmake/Modules/FindComputeCpp.cmake)
-
-    if (ComputeCpp_ROOT_DIR)
-        set(A_SYCL_FOUND true)
-    endif ()
-    add_compile_definitions(USING_COMPUTECPP)
-    message(STATUS " Using ComputeCpp CMake")
-    message(STATUS " Path to ComputeCpp implementation: ${COMPUTECPP_PACKAGE_ROOT_DIR} ")
-    #set(CMAKE_CXX_STANDARD 11)
-    include(FindOpenCL)
 endif ()
 
 
