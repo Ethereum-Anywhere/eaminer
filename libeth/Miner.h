@@ -30,19 +30,15 @@ extern bool g_seqDAG;
 namespace dev::eth {
 enum class DeviceTypeEnum { Unknown, Cpu, Gpu, Accelerator };
 
-enum class DeviceSubscriptionTypeEnum {
-    None,
-    OpenCL,
-    Cuda,
-    Cpu
-
-};
+enum class DeviceSubscriptionTypeEnum { None, OpenCL, Cuda, Cpu };
 
 enum class MinerType { Mixed, CL, CUDA, CPU };
 
 enum class HwMonitorInfoType { UNKNOWN, NVIDIA, AMD, CPU };
 
-enum class ClPlatformTypeEnum { Unknown, Amd, Clover, Nvidia, Intel };
+#ifdef ETH_ETHASHCL
+enum class ClPlatformTypeEnum { Unknown, Amd, Clover, Nvidia, Intel, Apple };
+#endif
 
 enum class SolutionAccountingEnum { Accepted, Rejected, Wasted, Failed };
 
@@ -75,7 +71,7 @@ struct HwSensorsType {
         std::string _ret = std::to_string(tempC);
         if (memtempC) _ret += '/' + std::to_string(memtempC);
         _ret += "C " + std::to_string(fanP) + "%";
-        if (powerW) _ret.append(" " + boost::str(boost::format("%0.2f") % powerW) + "W");
+        if (powerW > 0.) _ret.append(" " + boost::str(boost::format("%0.2f") % powerW) + "W");
         return _ret;
     };
 };
@@ -88,8 +84,11 @@ struct DeviceDescriptor {
     size_t totalMemory;     // Total memory available by device
     std::string boardName;
 
+#ifdef ETH_ETHASHCPU
     int cpCpuNumer;   // For CPU
+#endif
 
+#ifdef ETH_ETHASHCUDA
     bool cuDetected;   // For CUDA detected devices
     unsigned int cuDeviceOrdinal;
     unsigned int cuDeviceIndex;
@@ -98,7 +97,9 @@ struct DeviceDescriptor {
     unsigned int cuComputeMinor;
     unsigned int cuBlockSize;
     unsigned int cuStreamSize;
+#endif
 
+#ifdef ETH_ETHASHCL
     bool clDetected;   // For OpenCL detected devices
     std::string clPlatformVersion;
     unsigned int clPlatformVersionMajor;
@@ -118,6 +119,7 @@ struct DeviceDescriptor {
     unsigned clGroupSize;
     bool clBin;
     bool clSplit;
+#endif
 };
 
 struct HwMonitorInfo {
@@ -198,7 +200,7 @@ struct TelemetryType {
         for (TelemetryAccountType& miner: miners) {
             ss.str("");
             i++;
-            hr = miner.hashrate / pow(1000.0, magnitude);
+            hr = static_cast<float>(miner.hashrate / pow(1000.0, magnitude));
 
             ss << (miner.paused || hr < 1 ? EthRed : EthWhite) << miner.prefix << i << " " << EthTeal << std::fixed << std::setprecision(2) << hr << EthReset;
 

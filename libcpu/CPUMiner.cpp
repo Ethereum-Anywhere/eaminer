@@ -9,12 +9,16 @@
  */
 
 #if defined(__linux__)
-#if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE /* we need sched_setaffinity() */
+#    if !defined(_GNU_SOURCE)
+#        define _GNU_SOURCE /* we need sched_setaffinity() */
+#    endif
+#    include <error.h>
+#    include <sched.h>
+#    include <unistd.h>
 #endif
-#include <error.h>
-#include <sched.h>
-#include <unistd.h>
+
+#if defined(__APPLE__)
+#    include <unistd.h>
 #endif
 
 #include <ethash/ethash.hpp>
@@ -23,8 +27,8 @@
 #include <boost/version.hpp>
 
 #if 0
-#include <boost/fiber/numa/pin_thread.hpp>
-#include <boost/fiber/numa/topology.hpp>
+#    include <boost/fiber/numa/pin_thread.hpp>
+#    include <boost/fiber/numa/topology.hpp>
 #endif
 
 #include "CPUMiner.h"
@@ -35,7 +39,7 @@
 #elif defined(_WIN32)
 /* windows */
 #else
-#error "Invalid OS configuration"
+#    error "Invalid OS configuration"
 #endif
 
 // using namespace std;
@@ -48,8 +52,13 @@ using namespace eth;
  * returns physically available memory (no swap)
  */
 static size_t getTotalPhysAvailableMemory() {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
+#    if defined(__APPLE__)
+    long pages = sysconf(_SC_PHYS_PAGES);
+#    else
     long pages = sysconf(_SC_AVPHYS_PAGES);
+#    endif
+
     if (pages == -1L) {
         cwarn << "Error in func " << __FUNCTION__ << " at sysconf(_SC_AVPHYS_PAGES) \"" << strerror(errno) << "\"\n";
         return 0;
@@ -77,7 +86,7 @@ static size_t getTotalPhysAvailableMemory() {
  * return numbers of available CPUs
  */
 unsigned CPUMiner::getNumDevices() {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
     long cpus_available;
     cpus_available = sysconf(_SC_NPROCESSORS_ONLN);
     if (cpus_available == -1L) {
@@ -85,10 +94,12 @@ unsigned CPUMiner::getNumDevices() {
         return 0;
     }
     return cpus_available;
-#else
+#elif defined(_WIN32)
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
     return sysinfo.dwNumberOfProcessors;
+#else
+    return std::thread::hardware_concurrency();
 #endif
 }
 
@@ -120,7 +131,7 @@ bool CPUMiner::initDevice() {
         cwarn << "Error in func " << __FUNCTION__ << " at sched_setaffinity() \"" << strerror(errno) << "\"\n";
         cwarn << "cp-" << m_index << "could not bind thread to cpu" << m_deviceDescriptor.cpCpuNumer << "\n";
     }
-#else
+#elif defined(_WIN32)
     DWORD_PTR dwThreadAffinityMask = 1i64 << m_deviceDescriptor.cpCpuNumer;
     DWORD_PTR previous_mask;
     previous_mask = SetThreadAffinityMask(GetCurrentThread(), dwThreadAffinityMask);
@@ -135,7 +146,7 @@ bool CPUMiner::initDevice() {
 /*
  * A new epoch was receifed with last work package (called from Miner::initEpoch())
  *
- * If we get here it means epoch has changed so it's not necessary
+ * If we get here it means epoch has changed, so it's not necessary
  * to check again dag sizes. They're changed for sure
  * We've all related infos in m_epochContext (.dagSize, .dagNumItems, .lightSize, .lightNumItems)
  */
@@ -148,7 +159,7 @@ bool CPUMiner::initEpoch() {
    Miner should stop working on the current block
    This happens if a
      * new work arrived                       or
-     * miner should stop (eg exit ethminer)   or
+     * miner should stop (e.g. exit ethminer)   or
      * miner should pause
 */
 void CPUMiner::kick_miner() {
@@ -227,17 +238,17 @@ void CPUMiner::workLoop() {
     }
 }
 
-void CPUMiner::enumDevices(std::map<std::string, DeviceDescriptor>& _DevicesCollection) {
-    unsigned numDevices = getNumDevices();
+void CPUMiner::enumDevices(std::map<std::string, DeviceDescriptor>& DevicesCollection) {
+    auto numDevices = (int) getNumDevices();
 
-    for (unsigned i = 0; i < numDevices; i++) {
+    for (int i = 0; i < numDevices; i++) {
         std::string uniqueId;
         std::ostringstream s;
         DeviceDescriptor deviceDescriptor;
 
         s << "cpu-" << i;
         uniqueId = s.str();
-        if (_DevicesCollection.find(uniqueId) != _DevicesCollection.end()) deviceDescriptor = _DevicesCollection[uniqueId];
+        if (DevicesCollection.find(uniqueId) != DevicesCollection.end()) deviceDescriptor = DevicesCollection[uniqueId];
         else
             deviceDescriptor = DeviceDescriptor();
 
@@ -251,6 +262,6 @@ void CPUMiner::enumDevices(std::map<std::string, DeviceDescriptor>& _DevicesColl
 
         deviceDescriptor.cpCpuNumer = i;
 
-        _DevicesCollection[uniqueId] = deviceDescriptor;
+        DevicesCollection[uniqueId] = deviceDescriptor;
     }
 }

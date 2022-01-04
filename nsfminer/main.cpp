@@ -8,7 +8,7 @@
  * this file.
  */
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 #    include <execinfo.h>
 #    include <pwd.h>
 #endif
@@ -106,17 +106,14 @@ static void headers(vector<string>& h, bool color) {
     ss.str("");
     ss << white << "3rd Party: " << OPENSSL_VERSION_TEXT;
     h.push_back(ss.str());
-    char username[64];
+
 #if defined(__linux__)
     uid_t uid = geteuid();
     struct passwd* pw = getpwuid(uid);
-    strcpy(username, pw ? pw->pw_name : "unknown");
-#else
-    strcpy(username, "unknown");
-#endif
     ss.str("");
-    ss << (color ? EthWhite : "") << "Running as user: " << username;
+    ss << (color ? EthWhite : "") << "Running as user: " << (pw ? pw->pw_name : "Unknown");
     h.push_back(ss.str());
+#endif
 
     ss.str("");
     ss << white << "Ethash version: " << ethash::version << std::endl;
@@ -241,7 +238,7 @@ public:
         dev::setThreadName("main");
 
         switch (sig) {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 #    define BACKTRACE_MAX_FRAMES 30
             case SIGSEGV:
                 static bool in_handler = false;
@@ -260,7 +257,7 @@ public:
                     cerr << "backtrace() returned " << nptrs << " addresses\n";
 
                     symbols = backtrace_symbols(buffer, nptrs);
-                    if (symbols == NULL) {
+                    if (!symbols) {
                         perror("backtrace_symbols()");
                         exit(EXIT_FAILURE);   // Also exit 128 ??
                     }

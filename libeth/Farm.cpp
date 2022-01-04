@@ -48,20 +48,22 @@ Farm::Farm(minerMap& DevicesCollection, FarmSettings _settings)
                 need_nvmlh = true;
                 continue;
             }
+#ifdef ETH_ETHASHCL
             if (it.second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL) {
                 if (it.second.clPlatformType == ClPlatformTypeEnum::Nvidia) {
                     need_nvmlh = true;
                     continue;
                 }
                 if (it.second.clPlatformType == ClPlatformTypeEnum::Amd) {
-#if defined(__linux)
+#    if defined(__linux)
                     need_sysfsh = true;
-#else
+#    else
                     need_adlh = true;
-#endif
+#    endif
                     continue;
                 }
             }
+#endif
         }
 
 #if defined(__linux)
@@ -178,11 +180,11 @@ bool Farm::start() {
 #endif
 #if ETH_ETHASHCL
 
-            if (it->second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL) {
+            if (it.second.subscriptionType == DeviceSubscriptionTypeEnum::OpenCL) {
                 minerTelemetry.prefix = "cl";
-                if (m_Settings.clGroupSize) it->second.clGroupSize = m_Settings.clGroupSize;
-                it->second.clSplit = m_Settings.clSplit;
-                m_miners.push_back(shared_ptr<Miner>(new CLMiner(m_miners.size(), it->second)));
+                if (m_Settings.clGroupSize) it.second.clGroupSize = m_Settings.clGroupSize;
+                it.second.clSplit = m_Settings.clSplit;
+                m_miners.push_back(shared_ptr<Miner>(new CLMiner(m_miners.size(), it.second)));
             }
 #endif
 #if ETH_ETHASHCPU
