@@ -1,8 +1,5 @@
 # eaminer -- Ethereum Anywhere miner
 
-[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg)](https://github.com/RichardLitt/standard-readme)
-[![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)][Gitter]
-
 > Ethereum (ethash) miner with OpenCL, CUDA and stratum support
 
 **eaminer** is an Ethash Heterogeneous mining application: you can/should be able to mine on pretty much any device any coin that relies on an Ethash Proof of Work.
