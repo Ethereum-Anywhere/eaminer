@@ -254,7 +254,7 @@ void CUDAMiner::enumDevices(minerMap& DevicesCollection) {
 static const uint32_t zero3[3] = {0, 0, 0};   // zero the result count
 
 void CUDAMiner::search(uint8_t const* header, uint64_t target, uint64_t start_nonce, const dev::eth::WorkPackage& w) {
-    set_header(*((const hash32_t*) header));
+    set_header(header);
     if (m_current_target != target) {
         set_target(target);
         m_current_target = target;

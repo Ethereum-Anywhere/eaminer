@@ -18,7 +18,7 @@
 
 DEV_INLINE bool compute_hash(uint64_t nonce) {
     // sha3_512(header .. nonce)
-    uint2 state[12];
+    uint2 state[12]{};
 
     state[4] = vectorize(nonce);
 
@@ -29,14 +29,14 @@ DEV_INLINE bool compute_hash(uint64_t nonce) {
     const int mix_idx = thread_id & 3;
 
     for (int i = 0; i < THREADS_PER_HASH; i += _PARALLEL_HASH) {
-        uint4 mix[_PARALLEL_HASH];
-        uint32_t init0[_PARALLEL_HASH];
+        uint4 mix[_PARALLEL_HASH]{};
+        uint32_t init0[_PARALLEL_HASH]{};
 
         // share init among threads
-        //#pragma unroll
+
         for (int p = 0; p < _PARALLEL_HASH; p++) {
-            uint2 shuffle[8];
-            //#pragma unroll
+            uint2 shuffle[8]{};
+
             for (int j = 0; j < 8; j++) {
                 shuffle[j].x = SHFL(state[j].x, i + p, THREADS_PER_HASH);
                 shuffle[j].y = SHFL(state[j].y, i + p, THREADS_PER_HASH);
@@ -50,25 +50,23 @@ DEV_INLINE bool compute_hash(uint64_t nonce) {
             init0[p] = SHFL(shuffle[0].x, 0, THREADS_PER_HASH);
         }
 
-        //#pragma unroll
         for (int a = 0; a < ACCESSES; a += 4) {
             uint32_t t = bfe(a, 2u, 3u);
 
-            //#pragma unroll
             for (int b = 0; b < 4; b++) {
-                uint32_t offset[_PARALLEL_HASH];
-                //#pragma unroll
+                uint32_t offset[_PARALLEL_HASH]{};
+
                 for (int p = 0; p < _PARALLEL_HASH; p++) {
                     offset[p] = fnv(init0[p] ^ (a + b), (reinterpret_cast<const uint32_t*>(&mix[p]))[b]) % d_dag_size;
                     offset[p] = SHFL(offset[p], t, THREADS_PER_HASH);
                 }
-                //#pragma unroll
+
                 for (int p = 0; p < _PARALLEL_HASH; p++) { mix[p] = fnv4(mix[p], d_dag[offset[p]].uint4s[thread_id]); }
             }
         }
 
         for (int p = 0; p < _PARALLEL_HASH; p++) {
-            uint2 shuffle[4];
+            uint2 shuffle[4]{};
             uint32_t thread_mix = fnv_reduce(mix[p]);
 
             // update mix across threads

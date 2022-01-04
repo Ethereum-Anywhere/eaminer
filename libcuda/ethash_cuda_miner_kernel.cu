@@ -47,7 +47,7 @@ __global__ void ethash_calculate_dag_item(uint32_t start) {
     if (((node_index >> 1) & (~1)) >= d_dag_size) return;
     union {
         hash128_t dag_node;
-        uint2 sha3_buf[25];
+        uint2 sha3_buf[25]{};
     };
     copy(dag_node.uint4s, d_light[node_index % d_light_size].uint4s, 4);
     dag_node.words[0] ^= node_index;
@@ -124,6 +124,6 @@ void get_constants(hash128_t** _dag, uint32_t* _dag_size, hash64_t** _light, uin
     }
 }
 
-void set_header(hash32_t _header) { CUDA_CALL(cudaMemcpyToSymbol(d_header, &_header, sizeof(hash32_t))); }
+void set_header(uint8_t const* _header) { CUDA_CALL(cudaMemcpyToSymbol(d_header, _header, sizeof(hash32_t))); }
 
 void set_target(uint64_t _target) { CUDA_CALL(cudaMemcpyToSymbol(d_target, &_target, sizeof(uint64_t))); }

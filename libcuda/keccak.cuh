@@ -61,18 +61,15 @@ DEV_INLINE uint2 chi(const uint2 a, const uint2 b, const uint2 c) {
 }
 
 DEV_INLINE void keccak_f1600_init(uint2* state) {
-    uint2 s[25];
-    uint2 t[5], u, v;
-    const uint2 u2zero = make_uint2(0, 0);
+    uint2 s[25]{};
+    uint2 t[5]{}, u{}, v{};
 
     devectorize2(d_header.uint4s[0], s[0], s[1]);
     devectorize2(d_header.uint4s[1], s[2], s[3]);
     s[4] = state[4];
     s[5] = make_uint2(1, 0);
-    s[6] = u2zero;
-    s[7] = u2zero;
     s[8] = make_uint2(0, 0x80000000);
-    for (int i = 9; i < 25; i++) s[i] = u2zero;
+
 
     /* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
     t[0].x = s[0].x ^ s[5].x;
@@ -377,21 +374,14 @@ DEV_INLINE void keccak_f1600_init(uint2* state) {
 }
 
 DEV_INLINE uint64_t keccak_f1600_final(uint2* state) {
-    uint2 s[25];
-    uint2 t[5], u, v;
-    const uint2 u2zero = make_uint2(0, 0);
+    uint2 s[25]{};
+    uint2 t[5]{}, u{}, v{};
 
 #pragma unroll
     for (int i = 0; i < 12; ++i) s[i] = state[i];
-
     s[12] = make_uint2(1, 0);
-    s[13] = u2zero;
-    s[14] = u2zero;
-    s[15] = u2zero;
     s[16] = make_uint2(0, 0x80000000);
 
-#pragma unroll
-    for (int i = 17; i < 25; i++) s[i] = u2zero;
 
     /* theta: c = a[0,i] ^ a[1,i] ^ .. a[4,i] */
     t[0] = xor3(s[0], s[5], s[10]);
@@ -650,9 +640,9 @@ DEV_INLINE uint64_t keccak_f1600_final(uint2* state) {
 }
 
 DEV_INLINE void SHA3_512(uint2* s) {
-    uint2 t[5], u, v;
+    uint2 t[5]{}, u{}, v{};
 
-    for (int i = 8; i < 25; i++) { s[i] = make_uint2(0, 0); }
+    for (int i = 8; i < 25; i++) { s[i] = {}; }
     s[8].x = 1;
     s[8].y = 0x80000000;
 
