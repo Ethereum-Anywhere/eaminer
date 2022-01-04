@@ -1,6 +1,6 @@
-# eaminer -- Ethereum Anywhere miner
+# eaminer -- Mine Ethereum Anywhere
 
-> Ethereum (ethash) miner with OpenCL, CUDA and stratum support
+> Ethereum (ethash) miner with SYCL (HIP, CUDA, Intel GPUs,...), OpenCL, CUDA and stratum support
 
 **eaminer** is an Ethash Heterogeneous mining application: you can/should be able to mine on pretty much any device any coin that relies on an Ethash Proof of Work.
 
