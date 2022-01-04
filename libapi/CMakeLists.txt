@@ -11,5 +11,5 @@ set(SOURCES
         )
 
 add_library(api ${SOURCES})
-target_link_libraries(api PRIVATE eth dev nsfminer-buildinfo Boost::filesystem ethash OpenSSL::SSL)
+target_link_libraries(api PRIVATE eth dev eaminer-buildinfo Boost::filesystem ethash OpenSSL::SSL)
 target_include_directories(api PRIVATE ..)

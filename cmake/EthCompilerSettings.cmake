@@ -18,14 +18,14 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     eth_add_cxx_linker_flag_if_supported(-pthread)
     eth_add_cxx_linker_flag_if_supported(-static-libstdc++)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
-    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,-Map=nsfminer.map")
+    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,-Map=eaminer.map")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unknown-pragmas -Wextra -Wno-unknown-warning-option")
 
-    if(ETHASHSYCL)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument -Wno-linker-warnings")
-    endif()	    
+    if (ETHASHSYCL)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument -Wno-linker-warnings")
+    endif ()
 
     eth_add_cxx_compiler_flag_if_supported(-ffunction-sections)
     eth_add_cxx_compiler_flag_if_supported(-fcolor-diagnostics)

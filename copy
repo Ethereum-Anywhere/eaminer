@@ -1,1 +1,1 @@
-sudo cp nsfminer/nsfminer /opt/mmp/miners/nsfminer
+sudo cp eaminer/eaminer /opt/mmp/miners/eaminer

@@ -25,7 +25,7 @@
 #include <openssl/crypto.h>
 #include <openssl/opensslv.h>
 
-#include <nsfminer/buildinfo.h>
+#include <eaminer/buildinfo.h>
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #    define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
@@ -75,9 +75,9 @@ static void headers(vector<string>& h, bool color) {
     const string white(color ? EthWhite : "");
     const string reset(color ? EthReset : "");
 
-    auto* bi = nsfminer_get_buildinfo();
+    auto* bi = eaminer_get_buildinfo();
     stringstream ss;
-    ss << yellow << "nsfminer " << bi->project_version << " (No stinkin' fees edition)";
+    ss << yellow << "eaminer " << bi->project_version << " Run Ethereum Anywhere (Heterogeneous Edition)";
     h.push_back(ss.str());
 
     ss.str("");
@@ -85,7 +85,7 @@ static void headers(vector<string>& h, bool color) {
     h.push_back(ss.str());
 
     ss.str("");
-    ss << white << "https://github.com/no-fee-ethereum-mining/nsfminer";
+    ss << white << "https://github.com/Ethereum-Anywhere/ea";
     h.push_back(ss.str());
 
     ss.str("");
@@ -372,7 +372,7 @@ public:
                 "One or more Stratum pool or http (getWork) connection as URL(s)\n\n"
                 "scheme://[user[.workername][:password]@]hostname:port[/...]\n\n"
                 "For details and some samples how to fill in this value please use\n"
-                "nsfminer --help-module con\n\n")
+                "eaminer --help-module con\n\n")
 
             ("config,F", value<string>(),
                 "Configuration file name. See '-H conf' for details.")
@@ -649,7 +649,7 @@ public:
                      << "    available and so on till the list is exhausted. At that moment\n"
                      << "    miner restarts the connection cycle from the first one.\n"
                      << "    An exception to this behavior is ruled by the --failover-timeout\n"
-                     << "    command line argument. See 'nsfminer -H misc' for details.\n\n"
+                     << "    command line argument. See 'eaminer -H misc' for details.\n\n"
                      << "    The special notation '-P exit' stops the failover loop.\n"
                      << "    When miner reaches this kind of connection it simply quits.\n\n"
                      << "    When using stratum mode miner tries to auto-detect the correct\n"
@@ -1104,7 +1104,7 @@ int main(int argc, char** argv) {
 
     if (argc < 2) {
         cout << "No arguments specified.";
-        cout << "Try 'nsfminer --help' to get a list of arguments.";
+        cout << "Try 'eaminer --help' to get a list of arguments.";
         return 1;
     }
 

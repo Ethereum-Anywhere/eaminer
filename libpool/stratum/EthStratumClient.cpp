@@ -10,7 +10,7 @@
 
 #include <ethash/ethash.hpp>
 #include <memory>
-#include <nsfminer/buildinfo.h>
+#include <eaminer/buildinfo.h>
 
 #include "EthStratumClient.h"
 
@@ -420,7 +420,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec) {
 #endif
                 cwarn << "* Double check hostname in the -P argument.";
                 cwarn << "* Disable certificate verification all-together via environment "
-                         "variable. See nsfminer --help for info about environment variables";
+                         "variable. See eaminer --help for info about environment variables";
                 cwarn << "If you do the latter please be advised you might expose yourself to the "
                          "risk of seeing your shares stolen";
             }
@@ -480,7 +480,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec) {
 
         case EthStratumClient::ETHEREUMSTRATUM:
 
-            jReq["params"].append(nsfminer_get_buildinfo()->project_name_with_version);
+            jReq["params"].append(eaminer_get_buildinfo()->project_name_with_version);
             jReq["params"].append("EthereumStratum/1.0.0");
 
             break;
@@ -489,7 +489,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec) {
 
             jReq["method"] = "mining.hello";
             Json::Value jPrm;
-            jPrm["agent"] = nsfminer_get_buildinfo()->project_name_with_version;
+            jPrm["agent"] = eaminer_get_buildinfo()->project_name_with_version;
             jPrm["host"] = m_conn->Host();
             jPrm["port"] = toCompactHex((uint32_t) m_conn->Port(), HexPrefix::DontAdd);
             jPrm["proto"] = "EthereumStratum/2.0.0";
@@ -1194,7 +1194,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
             m_io_service.post(m_io_strand.wrap([this] { disconnect(); }));
         } else if (_method == "client.get_version") {
             jReq["id"] = _id;
-            jReq["result"] = nsfminer_get_buildinfo()->project_name_with_version;
+            jReq["result"] = eaminer_get_buildinfo()->project_name_with_version;
 
             if (_rpcVer == 1) {
                 jReq["error"] = Json::Value::null;
