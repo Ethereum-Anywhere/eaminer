@@ -33,6 +33,12 @@ if (ETHDBUS)
     target_link_libraries(nsfminer PRIVATE ${DBUS_LIBRARIES})
 endif ()
 
+if (ETHASHSYCL)
+    include(../libsycl/cmake/FindSYCL.cmake)
+    add_sycl_to_target(TARGET nsfminer SOURCES ${SRC_LIST})
+endif ()
+
+
 if (APICORE)
     target_link_libraries(nsfminer PRIVATE api)
 endif ()

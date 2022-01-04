@@ -30,9 +30,9 @@ extern bool g_seqDAG;
 namespace dev::eth {
 enum class DeviceTypeEnum { Unknown, Cpu, Gpu, Accelerator };
 
-enum class DeviceSubscriptionTypeEnum { None, OpenCL, Cuda, Cpu };
+enum class DeviceSubscriptionTypeEnum { None, OpenCL, Cuda, Cpu, SYCL_Device };
 
-enum class MinerType { Mixed, CL, CUDA, CPU };
+enum class MinerType { Mixed, CL, CUDA, CPU, SYCL };
 
 enum class HwMonitorInfoType { UNKNOWN, NVIDIA, AMD, CPU };
 
@@ -86,6 +86,12 @@ struct DeviceDescriptor {
 
 #ifdef ETH_ETHASHCPU
     int cpCpuNumer;   // For CPU
+#endif
+
+#ifdef ETH_ETHASHSYCL
+    size_t sycl_work_items;
+    size_t sycl_work_groups;
+    size_t sycl_device_idx;
 #endif
 
 #ifdef ETH_ETHASHCUDA

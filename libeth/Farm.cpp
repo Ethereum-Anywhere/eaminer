@@ -14,6 +14,10 @@
 #    include <libcl/CLMiner.h>
 #endif
 
+#if ETH_ETHASHSYCL
+#    include <libsycl/SYCLMiner.h>
+#endif
+
 #if ETH_ETHASHCUDA
 #    include <libcuda/CUDAMiner.h>
 #endif
@@ -176,6 +180,12 @@ bool Farm::start() {
                 if (m_Settings.cuBlockSize) it.second.cuBlockSize = m_Settings.cuBlockSize;
                 if (m_Settings.cuStreams) it.second.cuStreamSize = m_Settings.cuStreams;
                 m_miners.push_back(shared_ptr<Miner>(new CUDAMiner(m_miners.size(), it.second)));
+            }
+#endif
+#if ETH_ETHASHSYCL
+            if (it.second.subscriptionType == DeviceSubscriptionTypeEnum::SYCL_Device) {
+                minerTelemetry.prefix = "SYCL";
+                m_miners.push_back(shared_ptr<Miner>(new SYCLMiner(m_miners.size(), it.second)));
             }
 #endif
 #if ETH_ETHASHCL

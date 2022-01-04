@@ -38,6 +38,9 @@
 #if ETH_ETHASHCUDA
 #    include <libcuda/CUDAMiner.h>
 #endif
+#if ETH_ETHASHSYCL
+#    include <libsycl/SYCLMiner.h>
+#endif
 #if ETH_ETHASHCPU
 #    include <libcpu/CPUMiner.h>
 #endif
@@ -96,11 +99,12 @@ static void headers(vector<string>& h, bool color) {
 #else
     ss << "MSVC " << bi->compiler_version << ", ";
 #endif
+
 #if ETH_ETHASHCUDA
     int v;
     if (cudaRuntimeGetVersion(&v) == cudaSuccess) ss << "CUDA " << v / 1000 << '.' << (v % 100) / 10 << ", ";
-
 #endif
+
     ss << "Boost " << BOOST_VERSION / 100000 << '.' << BOOST_VERSION / 100 % 1000 << '.' << BOOST_VERSION % 100;
     h.push_back(ss.str());
     ss.str("");
@@ -127,6 +131,9 @@ static void on_help_module(const string& m) {
 #endif
 #if ETH_ETHASHCUDA
                 "cu",
+#endif
+#if ETH_ETHASHSYCL
+                "sycl",
 #endif
 #if ETH_ETHASHCPU
                 "cp",
@@ -310,7 +317,7 @@ public:
 
     bool validateArgs(int argc, char** argv) {
         queue<string> warnings;
-        bool cl_miner, cuda_miner, cpu_miner;
+        bool cl_miner, cuda_miner, cpu_miner, sycl_miner;
         vector<string> pools;
 
         options_description general("General options");
@@ -321,6 +328,9 @@ public:
 #endif
 #if ETH_ETHASHCUDA
         options_description cu("CUDA options");
+#endif
+#if ETH_ETHASHSYCL
+        options_description sycl("SYCL options");
 #endif
 #if ETH_ETHASHCPU
         options_description cp("CPU options");
@@ -340,6 +350,9 @@ public:
 #endif
 #if ETH_ETHASHCUDA
                 "cu, "
+#endif
+#if ETH_ETHASHSYCL
+                "sycl, "
 #endif
 #if ETH_ETHASHCPU
                 "cp, "
@@ -371,6 +384,10 @@ public:
 #if ETH_ETHASHCUDA
             ("cuda,U",
                 "Mine/Benchmark using CUDA only")
+#endif
+#if ETH_ETHASHSYCL
+            ("sycl,S",
+                "Mine/Benchmark using SYCL only")
 #endif
 #if ETH_ETHASHCPU
             ("cpu",
@@ -439,8 +456,7 @@ public:
                 "Use syslog appropriate output (drop timestamp "
                 "and channel prefix)")
 
-#if ETH_ETHASHCL || ETH_ETHASHCUDA || ETH_ETHASH_CPU
-
+#if ETH_ETHASHCL || ETH_ETHASHCUDA || ETH_ETHASH_CPU || ETH_ETHASHSYCL
             ("list-devices,L",
                 "Lists the detected OpenCL/CUDA devices and "
                 "exits. Can be combined with -G or -U flags")
@@ -464,7 +480,10 @@ public:
                 "List of space separated device numbers to be used")
 
             ("seq",
-                "Generate DAG sequentially, one GPU at a time.");
+                "Generate DAG sequentially, one GPU at a time.")
+
+            ("sleep", value<unsigned>()->default_value(0),
+                "Set the a sleeping duration in microseconds between compute kernel submissions to reduce power consumption");
 
 #if API_CORE
 
@@ -485,7 +504,6 @@ public:
 #endif
 #if ETH_ETHASHCUDA
         cu.add_options()
-
             ("cu-block", value<unsigned>()->default_value(128)->notifier(on_cu_block_size),
                 "Set the block size, valid values are 32, 64, 128, or 256")
 
@@ -659,6 +677,10 @@ public:
             else if (s == "cu")   // cuda
                 cout << endl << cu << endl;
 #endif
+#if ETH_ETHASHSYCL
+            else if (s == "sycl")   // SYCL
+                cout << endl << sycl << endl;
+#endif
 #if ETH_ETHASHCPU
             else if (s == "cp")   // cpu
                 cout << endl << cp << endl;
@@ -756,6 +778,7 @@ public:
 
         cl_miner = vm.count("opencl");
         cuda_miner = vm.count("cuda");
+        sycl_miner = vm.count("sycl");
         cpu_miner = vm.count("cpu");
         if (vm.count("pool")) {
             for (auto& p: vm["pool"].as<vector<string>>()) { pools.push_back(p); }
@@ -780,10 +803,13 @@ public:
             m_minerType = MinerType::CUDA;
         else if (cpu_miner)
             m_minerType = MinerType::CPU;
-        else if (cl_miner && cuda_miner)
-            m_minerType = MinerType::Mixed;
+        else if (sycl_miner)
+            m_minerType = MinerType::SYCL;
         else
             m_minerType = MinerType::Mixed;
+
+        if (cl_miner && cuda_miner) m_minerType = MinerType::Mixed;
+
 
         //  Operation mode Simulation do not require pool definitions
         //  Operation mode Stratum or GetWork do need at least one
@@ -844,11 +870,14 @@ public:
 #if ETH_ETHASHCUDA
         if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed) CUDAMiner::enumDevices(m_DevicesCollection);
 #endif
+#if ETH_ETHASHSYCL
+        if (m_minerType == MinerType::SYCL || m_minerType == MinerType::Mixed) SYCLMiner::enumDevices(m_DevicesCollection);
+#endif
 #if ETH_ETHASHCPU
         if (m_minerType == MinerType::CPU) CPUMiner::enumDevices(m_DevicesCollection);
 #endif
 
-        // Can't proceed without any GPU
+        // Can't proceed without any Device
         if (m_DevicesCollection.empty()) throw runtime_error("No usable mining devices found");
 
         // If requested list detected devices and exit
@@ -856,7 +885,7 @@ public:
             cout << setw(4) << " Id ";
             cout << setiosflags(ios::left) << setw(13) << "Pci Id    ";
             cout << setw(5) << "Type ";
-            cout << setw(30) << "Name                          ";
+            cout << setw(50) << "Name                          ";
 
 #if ETH_ETHASHCUDA
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed) {
@@ -874,7 +903,7 @@ public:
             cout << setw(4) << "--- ";
             cout << setiosflags(ios::left) << setw(13) << "------------";
             cout << setw(5) << "---- ";
-            cout << setw(30) << "----------------------------- ";
+            cout << setw(50) << "------------------------------------------------- ";
 
 #if ETH_ETHASHCUDA
             if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed) {
@@ -899,9 +928,10 @@ public:
                     case DeviceTypeEnum::Cpu: cout << "Cpu"; break;
                     case DeviceTypeEnum::Gpu: cout << "Gpu"; break;
                     case DeviceTypeEnum::Accelerator: cout << "Acc"; break;
+                    case DeviceTypeEnum::Unknown: cout << "Unk"; break;
                     default: break;
                 }
-                cout << setw(30) << (it->second.boardName).substr(0, 28);
+                cout << setw(50) << (it->second.boardName).substr(0, 48);
 #if ETH_ETHASHCUDA
                 if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed) {
                     cout << setw(5) << (it->second.cuDetected ? "Yes" : "");
@@ -921,6 +951,17 @@ public:
 
         // Subscribe devices with appropriate Miner Type
         // Use CUDA first when available then, as second, OpenCL
+
+#if ETH_ETHASHSYCL
+        if (m_minerType == MinerType::SYCL || m_minerType == MinerType::Mixed)
+            for (auto it = m_DevicesCollection.begin(); it != m_DevicesCollection.end(); it++) {
+                if (it->second.subscriptionType != DeviceSubscriptionTypeEnum::None) continue;
+                auto d = (unsigned) distance(m_DevicesCollection.begin(), it);
+                if (m_devices.empty() || find(m_devices.begin(), m_devices.end(), d) != m_devices.end())
+                    it->second.subscriptionType = DeviceSubscriptionTypeEnum::SYCL_Device;
+            }
+#endif
+
 
 #if ETH_ETHASHCUDA
         if (m_minerType == MinerType::CUDA || m_minerType == MinerType::Mixed)
