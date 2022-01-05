@@ -166,3 +166,22 @@ template<size_t width, typename T> static inline T shuffle_sync(const sycl::sub_
         return sycl::select_from_group(sg, val, (srcLane % width) + offset);
     }
 }
+
+/**
+ * Returns the maximum admissible work group size
+ * @tparam KernelName
+ * @param q
+ * @return
+ */
+template<typename KernelName> static inline size_t sycl_max_work_items(sycl::queue& q) {
+    size_t max_items = std::max<size_t>(1, std::min<size_t>(128, (uint32_t) q.get_device().get_info<sycl::info::device::max_work_group_size>()));
+#if defined(SYCL_IMPLEMENTATION_INTEL) || defined(SYCL_IMPLEMENTATION_ONEAPI)
+    try {
+        sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
+        auto kernel = sycl::get_kernel_bundle<sycl::bundle_state::executable>(q.get_context()).get_kernel(id);
+        //size_t register_count = kernel.get_info<sycl::info::kernel_device_specific::ext_codeplay_num_regs>(q.get_device());
+        max_items = std::min(max_items, kernel.get_info<sycl::info::kernel_device_specific::work_group_size>(q.get_device()));
+    } catch (std::exception& e) { std::cout << "Couldn't read kernel properties, got: " << e.what() << std::endl; }
+#endif
+    return max_items;
+}

@@ -16,9 +16,14 @@ template<typename T> OPT_CONSTEXPR static inline T fnv(const T& a, const T& b) {
 
 constexpr static inline uint32_t fnv_reduce(const sycl::uint4& v) { return fnv(fnv(fnv(v.x(), v.y()), v.z()), v.w()); }
 
-template<int threads_per_hash, int parallel_hash, int accesses, bool use_dagger_variant = false>
-static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& nonce, const uint64_t& d_dag_size, const hash128_t* const d_dag, const hash32_t* d_header,
-                                const uint64_t& d_target) noexcept {
+template<int threads_per_hash, int parallel_hash, bool use_dagger_variant = false>
+static inline bool compute_hash(        //
+        const sycl::nd_item<1>& item,   //
+        const uint64_t& nonce,          //
+        const uint64_t& d_dag_size,     //
+        const hash128_t* const d_dag,   //
+        const hash32_t* d_header,       //
+        const uint64_t& d_target) noexcept {
     // sha3_512(header .. nonce)
     std::array<sycl::uint2, 12> state{};
     state[4] = vectorize(nonce);
@@ -49,7 +54,7 @@ static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& no
         }
 
         if constexpr (!use_dagger_variant) {
-            for (int a = 0; a < accesses; a += 4) {
+            for (int a = 0; a < ACCESSES; a += 4) {
                 const auto t = (int) bfe<2, 3>(a);
 #pragma unroll
                 for (int b = 0; b < 4; b++) {
@@ -66,7 +71,7 @@ static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& no
         } else {
 #pragma unroll
             for (int p = 0; p < parallel_hash; p++) {
-                for (int a = 0; a < accesses; a += 4) {
+                for (int a = 0; a < ACCESSES; a += 4) {
 #pragma unroll
                     for (int b = 0; b < 4; b++) {
                         const auto t = (int) bfe<2, 3>(a);

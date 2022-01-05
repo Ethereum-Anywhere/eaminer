@@ -12,6 +12,7 @@
 #include <libeth/Farm.h>
 
 #include "SYCLMiner.h"
+#include "sycl_helpers.hpp"
 
 using namespace dev;
 using namespace eth;
@@ -44,6 +45,9 @@ bool SYCLMiner::initDevice() {
     cextr << "Using SYCL device: " << q.get_device().get_info<sycl::info::device::name>()
           << ") Memory : " << dev::getFormattedMemory((double) m_deviceDescriptor.totalMemory);
 
+
+    m_deviceDescriptor.sycl_work_items_gen_kernel = get_ethash_search_kernel_max_work_items(q);
+    m_deviceDescriptor.sycl_work_items_search_kernel = get_ethash_generate_kernel_max_work_items(q);
     // Set Hardware Monitor Info
     m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
     m_hwmoninfo.devicePciId = q.get_device().get_info<sycl::info::device::name>();
@@ -137,14 +141,14 @@ bool SYCLMiner::initEpoch() {
         resume(MinerPauseEnum::PauseDueToInitEpochError);
 
         sycl::event light_dag_copy_evt = q.memcpy(d_light_global, m_epochContext.lightCache, m_epochContext.lightSize);
-        auto gen_events = ethash_generate_dag(        //
-                m_epochContext.dagSize,               //
-                m_block_multiple,                     //
-                m_deviceDescriptor.sycl_work_items,   //
-                q,                                    //
-                m_epochContext.dagNumItems,           //
-                m_epochContext.lightNumItems,         //
-                d_dag_global,                         //
+        auto gen_events = ethash_generate_dag(                   //
+                m_epochContext.dagSize,                          //
+                m_block_multiple,                                //
+                m_deviceDescriptor.sycl_work_items_gen_kernel,   //
+                q,                                               //
+                m_epochContext.dagNumItems,                      //
+                m_epochContext.lightNumItems,                    //
+                d_dag_global,                                    //
                 d_light_global, light_dag_copy_evt);
 
         for (auto& e: gen_events) { e.wait_and_throw(); }
@@ -205,7 +209,7 @@ void SYCLMiner::workLoop() {
 
             // adjust work multiplier
             float hr = RetrieveHashRate();
-            if (hr >= 1e7) m_block_multiple = uint32_t((hr * target_batch_time) / (m_deviceDescriptor.sycl_work_items));
+            if (hr >= 1e7) m_block_multiple = uint32_t((hr * target_batch_time) / (m_deviceDescriptor.sycl_work_items_search_kernel));
 
             // Eventually start searching
             search(current.header.data(), upper64OfBoundary, current.startNonce, current);
@@ -283,7 +287,6 @@ void SYCLMiner::enumDevices(minerMap& DevicesCollection) {
 
             deviceDescriptor.totalMemory = get_platform_devices()[i].get_info<sycl::info::device::global_mem_size>();
             deviceDescriptor.sycl_device_idx = i;
-            deviceDescriptor.sycl_work_items = 128;
             deviceDescriptor.boardName = "[SYCL "s + std::to_string(i) + "] " + get_platform_devices()[i].get_info<sycl::info::device::name>();
             DevicesCollection[deviceDescriptor.uniqueId] = deviceDescriptor;
         } catch (std::exception& e) { ccrit << e.what(); }
@@ -301,7 +304,7 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
     d_header_global = *(reinterpret_cast<const hash32_t*>(header));
     d_target_global = target;
 
-    uint32_t batch_blocks(m_block_multiple * m_deviceDescriptor.sycl_work_items);
+    uint32_t batch_blocks(m_block_multiple * m_deviceDescriptor.sycl_work_items_search_kernel);
 
     // prime the queue
     std::future<Search_results> new_job;
@@ -309,14 +312,14 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
     {
         std::unique_lock<std::mutex> l(m_doneMutex);
         m_hung_miner.store(false);
-        new_job = run_ethash_search(                  //
-                m_block_multiple,                     //
-                m_deviceDescriptor.sycl_work_items,   //
-                q,                                    //
-                start_nonce,                          //
-                m_epochContext.dagNumItems,           //
-                d_dag_global,                         //
-                d_header_global,                      //
+        new_job = run_ethash_search(                                //
+                m_block_multiple,                                   //
+                m_deviceDescriptor.sycl_work_items_search_kernel,   //
+                q,                                                  //
+                start_nonce,                                        //
+                m_epochContext.dagNumItems,                         //
+                d_dag_global,                                       //
+                d_header_global,                                    //
                 d_target_global);
         start_nonce += batch_blocks;
         m_done = false;
@@ -340,14 +343,14 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
             busy = false;
         } else {
             m_hung_miner.store(false);
-            new_job = run_ethash_search(                  //
-                    m_block_multiple,                     //
-                    m_deviceDescriptor.sycl_work_items,   //
-                    q,                                    //
-                    start_nonce,                          //
-                    m_epochContext.dagNumItems,           //
-                    d_dag_global,                         //
-                    d_header_global,                      //
+            new_job = run_ethash_search(                                //
+                    m_block_multiple,                                   //
+                    m_deviceDescriptor.sycl_work_items_search_kernel,   //
+                    q,                                                  //
+                    start_nonce,                                        //
+                    m_epochContext.dagNumItems,                         //
+                    d_dag_global,                                       //
+                    d_header_global,                                    //
                     d_target_global);
         }
 
@@ -368,7 +371,7 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
         }
 
         start_nonce += batch_blocks;
-        updateHashRate(m_deviceDescriptor.sycl_work_items, results.hashCount);
+        updateHashRate(m_deviceDescriptor.sycl_work_items_search_kernel, results.hashCount);
     }
 
 
