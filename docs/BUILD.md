@@ -13,18 +13,48 @@
     * [Windows-specific script](#windows-specific-script)
 
 
-## Requirements
+# Requirements
 
-This project uses [CMake] and [Hunter] package manager.
+This project uses [CMake].
 
-### Common
+## Common
 
 1. [CMake] >= 3.5
 2. [Git](https://git-scm.com/downloads)
-3. [Perl](https://www.perl.org/get.html), needed to build OpenSSL
-4. [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) >= 9.0 (optional, install if you want NVidia CUDA support)
+3. [OpenSSL]
+4. [JsonCPP]
+5. [boost] 
 
-### Linux
+
+
+## SYCL on Linux
+
+### Using the open source Intel/LLVM
+Build a SYCL compiler using instructions from https://github.com/intel/llvm.
+
+Then configure cmake with `CXX=clang++ CC=clang cmake path_to_eaminer -DETHASHSYCL=ON`.
+
+Set `DPCPP_FLAGS` to configure the target before building:
+* CUDA: `-fsycl-targets=nvptx64-nvidia-cuda`, you can specify an arch with `-Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75` and print ptxas info with `-Xcuda-ptxas -v`
+* HIP:  `-fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfxXXX` offload arch must be specified.
+* OpenCL: with JIT: `-fsycl-targets=spir64` or with AOT: `-fsycl-targets=spir64_x86_64`. Eventually pass info to the AOT compiler with something like: `-Xsycl-target-backend=spir64_x86_64 --march=avx`. See `opencl-aot --help` for available options.
+* FPGA: `-fsycl-targets=spir64-fpga`
+
+
+### Using Intel(R) oneAPI/DPC++
+Install the compiler from Intel and bring run `source /opt/intel/oneapi/setvars.sh`. 
+
+Configure the cmake project with `CXX=dpcpp CC=icx cmake path_to_eaminer -DETHASHSYCL=ON`.
+
+Set `DPCPP_FLAGS` as presented before.
+
+
+### Using hipSYCL
+Install hipSYCL and set the environment variable `hipSYCL_DIR` to the path of the installation and configure the wmake project with:
+`cmake path_to_eaminer -DETHASHSYCL=ON -DHIPSYCL_TARGETS=...` where `DHIPSYCL_TARGETS` is set accordingly to hipSYCL doc (for OMP and CUDA it would be: `omp;cuda:sm_XX`). 
+
+
+## Linux
 
 1. GCC version >= 4.8
 2. DBUS development libs if building with `-DETHDBUS`. E.g. on Ubuntu run:
@@ -33,7 +63,7 @@ This project uses [CMake] and [Hunter] package manager.
 sudo apt install libdbus-1-dev
 ```
 
-#### OpenCL support on Linux
+### OpenCL support on Linux
 
 If you're planning to use [OpenCL on Linux](https://github.com/ruslo/hunter/wiki/pkg.opencl#pitfalls)
 you have to install the OpenGL libraries. E.g. on Ubuntu run:
@@ -44,11 +74,11 @@ sudo apt-get install mesa-common-dev
 
 These are sufficient for Ubuntu LTS releases. Other packages may be needed depending on your distrubution.
 
-### Windows
+## Windows
 
 1. [Visual Studio 2017](https://www.visualstudio.com/downloads/); Community Edition works fine. **Make sure you install MSVC 2015 toolkit (v140).**
 
-## Instructions
+# Instructions
 
 1. Make sure git submodules are up to date:
 
@@ -129,7 +159,7 @@ endlocal
 pause
 ```
 
-## CMake configuration options
+# CMake configuration options
 
 Pass these options to CMake configuration command, e.g.
 
@@ -145,10 +175,9 @@ cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 
 ## Disable Hunter
 
-If you want to install dependencies yourself or use system package manager you can disable Hunter by adding
-[`-DHUNTER_ENABLED=OFF`](https://docs.hunter.sh/en/latest/reference/user-variables.html#hunter-enabled)
-to the configuration options.
+Hunter was removed.
+
 
 [CMake]: https://cmake.org/
 [CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
-[Hunter]: https://docs.hunter.sh/
+

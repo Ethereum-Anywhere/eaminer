@@ -25,19 +25,13 @@ if (hipSYCL_FOUND)
 endif ()
 
 
-if (TRISYCL_INCLUDE_DIR AND NOT A_SYCL_FOUND)
-    set(A_SYCL_FOUND true)
-    message(STATUS " Using triSYCL CMake")
-    include(FindTriSYCL)
-endif ()
-
 # We expect the DPCPP compiler to have used
 if (NOT A_SYCL_FOUND)
     add_compile_definitions(USING_DPCPP)
     function(add_sycl_to_target arg1 arg2)
 	separate_arguments(DPCPP_FLAGS UNIX_COMMAND "${DPCPP_FLAGS}")
-        target_compile_options(${arg2} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${DPCPP_FLAGS} -fsycl -sycl-std=2020 -fsycl-unnamed-lambda>)
-        target_link_options(${arg2} PRIVATE ${DPCPP_FLAGS} -fsycl -sycl-std=2020 -fsycl-unnamed-lambda)
+        target_compile_options(${arg2} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${DPCPP_FLAGS} -fsycl -sycl-std=2020 -fsycl-id-queries-fit-in-int -fsycl-unnamed-lambda -DNDEBUG -DSYCL_DISABLE_FALLBACK_ASSERT=0 -Wno-unknown-cuda-version>)
+        target_link_options(${arg2} PRIVATE ${DPCPP_FLAGS} -fsycl -sycl-std=2020 -fsycl-unnamed-lambda -Wno-unknown-cuda-version -fsycl-id-queries-fit-in-int)
     endfunction()
 
 endif ()

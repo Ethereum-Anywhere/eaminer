@@ -234,7 +234,8 @@ const std::vector<sycl::device>& SYCLMiner::get_platform_devices() {
                     auto numa_nodes = dev.create_sub_devices<sycl::info::partition_property::partition_by_affinity_domain>(sycl::info::partition_affinity_domain::numa);
                     for (auto& numa_node: numa_nodes) { out.emplace_back(numa_node); }
                 } catch (...) { out.emplace_back(dev); }
-
+            } else if (dev.is_host()) {   // Ignoring host device
+                continue;
             } else {
                 out.emplace_back(dev);
             }
