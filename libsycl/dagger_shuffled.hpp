@@ -16,9 +16,8 @@ template<typename T> OPT_CONSTEXPR static inline T fnv(const T& a, const T& b) {
 
 constexpr static inline uint32_t fnv_reduce(const sycl::uint4& v) { return fnv(fnv(fnv(v.x(), v.y()), v.z()), v.w()); }
 
-
-template<int threads_per_hash, int parallel_hash, int accesses>
-static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& nonce, const uint64_t& d_dag_size, const hash128_t* const d_dag, const hash32_t& d_header,
+template<int threads_per_hash, int parallel_hash, int accesses, bool use_dagger_variant = false>
+static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& nonce, const uint64_t& d_dag_size, const hash128_t* const d_dag, const hash32_t* d_header,
                                 const uint64_t& d_target) noexcept {
     // sha3_512(header .. nonce)
     std::array<sycl::uint2, 12> state{};
@@ -30,11 +29,9 @@ static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& no
     const int thread_id = (int) (item.get_local_id() & (threads_per_hash - 1U));
     const int mix_idx = thread_id & 3;
 
-
     for (int i = 0; i < threads_per_hash; i += parallel_hash) {
         std::array<sycl::uint4, parallel_hash> mix{};
         std::array<uint32_t, parallel_hash> init0{};
-
 // share init among threads
 #pragma unroll
         for (int p = 0; p < parallel_hash; p++) {
@@ -51,37 +48,35 @@ static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& no
             init0[p] = shuffle_sync<threads_per_hash>(item.get_sub_group(), shuffle[0].x(), 0);
         }
 
-#ifndef DAGGER_VARIANT
-        for (int a = 0; a < accesses; a += 4) {
-            const auto t = (int) bfe<2, 3>(a);
-
-#pragma unroll
-            for (int b = 0; b < 4; b++) {
-                std::array<uint32_t, parallel_hash> offset{};
-#    pragma unroll
-                for (int p = 0; p < parallel_hash; p++) {
-                    offset[p] = fnv(init0[p] ^ (a + b), (mix[p][b])) % d_dag_size;
-                    offset[p] = shuffle_sync<threads_per_hash>(item.get_sub_group(), offset[p], t);
-                }
-#    pragma unroll
-                for (int p = 0; p < parallel_hash; p++) { mix[p] = fnv(mix[p], d_dag[offset[p]].uint4s[thread_id]); }
-            }
-        }
-#else
-#    pragma unroll
-        for (int p = 0; p < parallel_hash; p++) {
-
+        if constexpr (!use_dagger_variant) {
             for (int a = 0; a < accesses; a += 4) {
-#    pragma unroll
+                const auto t = (int) bfe<2, 3>(a);
+#pragma unroll
                 for (int b = 0; b < 4; b++) {
-                    const auto t = (int) bfe<2, 3>(a);
-                    uint32_t offset = fnv(init0[p] ^ (a + b), (mix[p][b])) % d_dag_size;
-                    offset = shuffle_sync<threads_per_hash>(item.get_sub_group(), offset, t);
-                    mix[p] = fnv(mix[p], d_dag[offset].uint4s[thread_id]);
+                    std::array<uint32_t, parallel_hash> offset{};
+#pragma unroll
+                    for (int p = 0; p < parallel_hash; p++) {
+                        offset[p] = fnv(init0[p] ^ (a + b), (mix[p][b])) % d_dag_size;
+                        offset[p] = shuffle_sync<threads_per_hash>(item.get_sub_group(), offset[p], t);
+                    }
+#pragma unroll
+                    for (int p = 0; p < parallel_hash; p++) { mix[p] = fnv(mix[p], d_dag[offset[p]].uint4s[thread_id]); }
+                }
+            }
+        } else {
+#pragma unroll
+            for (int p = 0; p < parallel_hash; p++) {
+                for (int a = 0; a < accesses; a += 4) {
+#pragma unroll
+                    for (int b = 0; b < 4; b++) {
+                        const auto t = (int) bfe<2, 3>(a);
+                        uint32_t offset = fnv(init0[p] ^ (a + b), (mix[p][b])) % d_dag_size;
+                        offset = shuffle_sync<threads_per_hash>(item.get_sub_group(), offset, t);
+                        mix[p] = fnv(mix[p], d_dag[offset].uint4s[thread_id]);
+                    }
                 }
             }
         }
-#endif
 
 
 #pragma unroll
@@ -109,9 +104,7 @@ static inline bool compute_hash(const sycl::nd_item<1>& item, const uint64_t& no
         }
     }
 
-
     // keccak_256(keccak_512(header..nonce) .. mix);
     if (cuda_swab64(keccak_f1600_final(state)) > d_target) return true;
-
     return false;
 }

@@ -13,7 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-
+#include <future>
 
 #if defined(__has_include)
 #    if __has_include(<sycl/sycl.hpp>)
@@ -82,9 +82,10 @@ typedef union {
 } hash64_t;
 
 
-[[nodiscard]] sycl::event run_ethash_search(   //
-        uint32_t work_groups, uint32_t work_items, sycl::queue& q, Search_results* g_output, uint64_t start_nonce, uint64_t d_dag_num_items, const hash128_t* d_dag,
-        hash32_t d_header, uint64_t d_target, sycl::event e = {});
+[[nodiscard]] std::future<Search_results> run_ethash_search(   //
+        uint32_t work_groups, uint32_t work_items, sycl::queue q, uint64_t start_nonce, uint64_t d_dag_num_items, const hash128_t* d_dag, const hash32_t& d_header,
+        uint64_t d_target, sycl::event e = {});
+
 [[nodiscard]] std::vector<sycl::event> ethash_generate_dag(   //
-        uint64_t dag_size, uint32_t work_groups, uint32_t work_items, sycl::queue& q, uint32_t d_dag_num_items, uint32_t d_light_num_items, hash128_t* d_dag,
+        uint64_t dag_size, uint32_t work_groups, uint32_t work_items, sycl::queue q, uint32_t d_dag_num_items, uint32_t d_light_num_items, hash128_t* d_dag,
         const hash64_t* d_light, sycl::event e = {});

@@ -47,12 +47,12 @@ OPT_CONSTEXPR static inline sycl::uint2 keccak_round_constants(int i) {
 #endif
 
 
-OPT_CONSTEXPR static inline void keccak_f1600_init(std::array<sycl::uint2, 12>& state, const hash32_t& d_header) noexcept {
+OPT_CONSTEXPR static inline void keccak_f1600_init(std::array<sycl::uint2, 12>& state, const hash32_t* d_header) noexcept {
     sycl::uint2 s[25]{};
     sycl::uint2 t[5]{}, u{}, v{};
 
-    devectorize2(d_header.uint4s[0], s[0], s[1]);
-    devectorize2(d_header.uint4s[1], s[2], s[3]);
+    devectorize2(d_header->uint4s[0], s[0], s[1]);
+    devectorize2(d_header->uint4s[1], s[2], s[3]);
     s[4] = state[4];
     s[5] = {1, 0};
     s[8] = {0U, 0x80000000U};
