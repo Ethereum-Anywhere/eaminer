@@ -36,6 +36,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "IntelLLVM")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
     eth_add_cxx_compiler_flag_if_supported(-stdlib=libstdc++)
+    eth_add_cxx_compiler_flag_if_supported(-Wno-unused-command-line-argument)
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
