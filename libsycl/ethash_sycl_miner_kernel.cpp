@@ -95,11 +95,14 @@ static inline void ethash_calculate_dag_item(   //
     SHA3_512(u.sha3_buf);
 
     const int thread_id = (int) (item.get_local_id() & 3U);
+#pragma unroll
     for (int i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
         uint32_t parent_index = fnv(node_index ^ i, u.dag_node.words[i % NODE_WORDS]) % d_light_num_items;
+#pragma unroll
         for (int t = 0; t < 4; t++) {
             uint32_t shuffle_index = shuffle_sync<4>(item.get_sub_group(), parent_index, t);
             sycl::uint4 p4 = d_light[shuffle_index].uint4s[thread_id];
+#pragma unroll
             for (int w = 0; w < 4; w++) {
                 sycl::uint4 s4 = shuffle_sync<4>(item.get_sub_group(), p4, w);
                 if (t == thread_id) { u.dag_node.uint4s[w] = fnv(u.dag_node.uint4s[w], s4); }
@@ -111,7 +114,6 @@ static inline void ethash_calculate_dag_item(   //
     auto* dag_nodes = reinterpret_cast<hash64_t*>(d_dag);
     copy<4>(dag_nodes[node_index].uint4s, u.dag_node.uint4s);
 }
-
 
 [[nodiscard]] std::vector<sycl::event> ethash_generate_dag(   //
         uint64_t dag_size,                                    //
