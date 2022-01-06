@@ -7,7 +7,7 @@
     * [Linux](#linux)
         * [OpenCL support on Linux](#opencl-support-on-linux)
     * [Windows](#windows)
-* [CMake configuration options](#cmake-configuration-options)
+* [CMake's configuration options](#cmake-configuration-options)
 * [Disable Hunter](#disable-hunter)
 * [Instructions](#instructions)
     * [Windows-specific script](#windows-specific-script)
@@ -25,8 +25,6 @@ This project uses [CMake].
 4. [JsonCPP] (libjsoncpp-dev)
 5. [boost] 
 
-
-
 ## SYCL on Linux
 
 ### Using the open source Intel/LLVM
@@ -37,7 +35,8 @@ Then configure cmake with `CXX=clang++ CC=clang cmake path_to_eaminer -DETHASHSY
 Set `DPCPP_FLAGS` to configure the target before building:
 * CUDA: `-fsycl-targets=nvptx64-nvidia-cuda`, you can specify an arch with `-Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75` and print ptxas info with `-Xcuda-ptxas -v`
 * HIP:  `-fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfxXXX` offload arch must be specified.
-* OpenCL: with JIT: `-fsycl-targets=spir64` or with AOT: `-fsycl-targets=spir64_x86_64`. Eventually pass info to the AOT compiler with something like: `-Xsycl-target-backend=spir64_x86_64 --march=avx`. See `opencl-aot --help` for available options.
+* OpenCL: with JIT: `-fsycl-targets=spir64` or with AOT: `-fsycl-targets=spir64_x86_64`. Eventually pass info to the AOT compiler with something like: `-Xsycl-target-backend=spir64_x86_64 --march=avx`.
+  See `opencl-aot --help` for available options.
 * FPGA: `-fsycl-targets=spir64-fpga`
 
 
@@ -80,7 +79,7 @@ These are sufficient for Ubuntu LTS releases. Other packages may be needed depen
 
 # Instructions
 
-1. Make sure git submodules are up to date:
+1. Make sure git submodules are up-to-date:
 
     ```shell
     git submodule update --init --recursive
@@ -159,7 +158,11 @@ endlocal
 pause
 ```
 
-# CMake configuration options
+## macOS
+
+Export `OPENSSL_ROOT_DIR=/usr/local/opt/openssl`
+
+# CMake's configuration options
 
 Pass these options to CMake configuration command, e.g.
 
@@ -167,11 +170,12 @@ Pass these options to CMake configuration command, e.g.
 cmake .. -DETHASHCUDA=ON -DETHASHCL=OFF
 ```
 
-* `-DETHASHCL=ON` - enable OpenCL mining, `ON` by default.
-* `-DETHASHCUDA=ON` - enable CUDA mining, `ON` by default.
+* `-DETHASHSYCL=ON` - enable SYCL mining, `OFF` by default.
+* `-DETHASHCL=ON` - enable OpenCL mining, `OFF` by default.
+* `-DETHASHCUDA=ON` - enable CUDA mining, `OFF` by default.
 * `-DAPICORE=ON` - enable API Server, `ON` by default.
-* `-DBINKERN=ON` - install AMD binary kernels, `OFF` by default.
-* `-DETHDBUS=ON` - enable D-Bus support, `OFF` by default.
+* `-DDEVBUILD=ON` - enable dev loggins, `OFF` by default.
+* `-DSANITIZE=sanitizers` - enable sanitizing with `sanitizers` being `unefined`, `thread`,etc. `OFF` by default.
 
 ## Disable Hunter
 
@@ -179,5 +183,6 @@ Hunter was removed.
 
 
 [CMake]: https://cmake.org/
+
 [CMake Build Tool Mode]: https://cmake.org/cmake/help/latest/manual/cmake.1.html#build-tool-mode
 

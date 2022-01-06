@@ -66,19 +66,19 @@ struct Search_results {
 };
 
 typedef struct {
-    sycl::uint4 uint4s[32 / sizeof(sycl::uint4)];
+    sycl::uint4 uint4s[32U / sizeof(sycl::uint4)];
 } hash32_t;
 
 typedef union {
-    uint32_t words[128 / sizeof(uint32_t)];
-    sycl::uint2 uint2s[128 / sizeof(sycl::uint2)];
-    sycl::uint4 uint4s[128 / sizeof(sycl::uint4)];
+    uint32_t words[128U / sizeof(uint32_t)];
+    sycl::uint2 uint2s[128U / sizeof(sycl::uint2)];
+    sycl::uint4 uint4s[128U / sizeof(sycl::uint4)];
 } hash128_t;
 
 typedef union {
-    uint32_t words[64 / sizeof(uint32_t)];
-    sycl::uint2 uint2s[64 / sizeof(sycl::uint2)];
-    sycl::uint4 uint4s[64 / sizeof(sycl::uint4)];
+    uint32_t words[64U / sizeof(uint32_t)];
+    sycl::uint2 uint2s[64U / sizeof(sycl::uint2)];
+    sycl::uint4 uint4s[64U / sizeof(sycl::uint4)];
 } hash64_t;
 
 

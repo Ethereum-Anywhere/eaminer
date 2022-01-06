@@ -18,7 +18,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     eth_add_cxx_linker_flag_if_supported(-pthread)
     eth_add_cxx_linker_flag_if_supported(-static-libstdc++)
     eth_add_cxx_linker_flag_if_supported(-Wl,--gc-sections)
-    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,-Map=eaminer.map")
+    eth_add_cxx_linker_flag_if_supported(-Wl,-Map=eaminer.map)
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unknown-pragmas -Wextra -Wno-unknown-warning-option")
@@ -35,7 +35,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "IntelLLVM")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+    eth_add_cxx_compiler_flag_if_supported(-stdlib=libstdc++)
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 

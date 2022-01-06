@@ -12,7 +12,6 @@
 #include <libeth/Farm.h>
 
 #include "SYCLMiner.h"
-#include "sycl_helpers.hpp"
 
 using namespace dev;
 using namespace eth;
@@ -43,7 +42,7 @@ SYCLMiner::~SYCLMiner() {
  */
 bool SYCLMiner::initDevice() {
     cextr << "Using SYCL device: " << q.get_device().get_info<sycl::info::device::name>()
-          << ") Memory : " << dev::getFormattedMemory((double) m_deviceDescriptor.totalMemory);
+          << ") Memory : " << dev::getFormattedMemory(static_cast<double>(m_deviceDescriptor.totalMemory));
 
 
     m_deviceDescriptor.sycl_work_items_gen_kernel = get_ethash_search_kernel_max_work_items(q);
