@@ -89,8 +89,8 @@ struct DeviceDescriptor {
 #endif
 
 #ifdef ETH_ETHASHSYCL
-    size_t sycl_work_items;
-    size_t sycl_work_groups;
+    size_t sycl_work_items_gen_kernel;
+    size_t sycl_work_items_search_kernel;
     size_t sycl_device_idx;
 #endif
 
