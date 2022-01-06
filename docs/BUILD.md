@@ -21,8 +21,8 @@ This project uses [CMake].
 
 1. [CMake] >= 3.5
 2. [Git](https://git-scm.com/downloads)
-3. [OpenSSL]
-4. [JsonCPP]
+3. [OpenSSL] (libssl-dev)
+4. [JsonCPP] (libjsoncpp-dev)
 5. [boost] 
 
 

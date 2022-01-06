@@ -66,8 +66,7 @@ find_package(OpenSSL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(JSONCPP jsoncpp)
 link_directories(${JSONCPP_LIBRARY_DIRS})
-#find_library(jsoncpp REQUIRED)
-
+include_directories("${JSONCPP_INCLUDE_DIRS}")
 configureProject()
 
 message("----------------------------------------------------------------------------")
