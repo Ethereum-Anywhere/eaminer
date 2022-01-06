@@ -14,7 +14,7 @@
 template<int threads_per_hash_, int parallel_hash_>
 static inline void ethash_search_kernel(                                                                                //
         const sycl::nd_item<1>& item,                                                                                   //
-        sycl::accessor<Search_results, 1, sycl::access::mode::write, sycl::access::target::device> g_output,            //
+        const sycl::accessor<Search_results, 1, sycl::access::mode::write, sycl::access::target::device>& g_output,     //
         uint64_t start_nonce,                                                                                           //
         uint64_t d_dag_num_items,                                                                                       //
         const hash128_t* const d_dag,                                                                                   //

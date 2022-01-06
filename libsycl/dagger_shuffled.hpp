@@ -110,6 +110,6 @@ static inline bool compute_hash(        //
     }
 
     // keccak_256(keccak_512(header..nonce) .. mix);
-    if (cuda_swab64(keccak_f1600_final(state)) > d_target) return true;
+    if (SWAB64(keccak_f1600_final(state)) > d_target) return true;
     return false;
 }

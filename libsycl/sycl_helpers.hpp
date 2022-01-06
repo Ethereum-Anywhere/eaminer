@@ -17,7 +17,7 @@
  */
 #ifdef SYCL_IMPLEMENTATION_HIPSYCL
 namespace sycl {
-template<typename T> constexpr static inline T rotate(const T& x, int n) { return (x << n) | (x >> ((sizeof(T) * 8) - n)); }
+template<typename T> constexpr static inline T rotate(const T& x, uint32_t n) { return (x << n) | (x >> ((sizeof(T) * 8U) - n)); }
 constexpr static inline uint64_t upsample(const uint32_t& hi, const uint32_t& lo) { return (uint64_t{hi} << 32) + lo; }
 }   // namespace sycl
 #endif
@@ -35,32 +35,15 @@ template<int N, typename T> static constexpr void copy(T* dst, const T* src) {
     for (int i = 0; i != N; ++i) { (dst)[i] = (src)[i]; }
 }
 
-/**
- *
- * @param LO
- * @param HI
- * @return
- */
-constexpr static inline uint64_t MAKE_ULONGLONG(uint32_t LO, uint32_t HI) { return sycl::upsample(HI, LO); }
-
-/**
- * Swap bytes order within a 32 bit word
- * @param x
- * @return
- */
-constexpr static inline uint32_t cuda_swab32(const uint32_t x) {
-    return (((x) << 24) & 0xff000000U) | (((x) << 8) & 0x00ff0000U) | (((x) >> 8) & 0x0000ff00U) | (((x) >> 24) & 0x000000ffU);
-}
 
 /**
  * Swap bytes order within a 64 bit word
  * @param x
  * @return
  */
-constexpr static inline uint64_t cuda_swab64(const uint64_t x) {
-    return (((uint64_t) (x) &0xff00000000000000ULL) >> 56) | (((uint64_t) (x) &0x00ff000000000000ULL) >> 40) | (((uint64_t) (x) &0x0000ff0000000000ULL) >> 24) |
-           (((uint64_t) (x) &0x000000ff00000000ULL) >> 8) | (((uint64_t) (x) &0x00000000ff000000ULL) << 8) | (((uint64_t) (x) &0x0000000000ff0000ULL) << 24) |
-           (((uint64_t) (x) &0x000000000000ff00ULL) << 40) | (((uint64_t) (x) &0x00000000000000ffULL) << 56);
+constexpr static inline uint64_t SWAB64(const uint64_t x) {
+    return ((x & 0xff00000000000000ULL) >> 56) | ((x & 0x00ff000000000000ULL) >> 40) | ((x & 0x0000ff0000000000ULL) >> 24) | ((x & 0x000000ff00000000ULL) >> 8) |
+           ((x & 0x00000000ff000000ULL) << 8) | ((x & 0x0000000000ff0000ULL) << 24) | ((x & 0x000000000000ff00ULL) << 40) | ((x & 0x00000000000000ffULL) << 56);
 }
 
 /**
@@ -97,39 +80,15 @@ constexpr static inline void devectorize2(const sycl::uint4& in, sycl::uint2& x,
  */
 OPT_CONSTEXPR static inline sycl::uint4 vectorize2(const sycl::uint2& x, const sycl::uint2& y) { return {x.x(), x.y(), y.x(), y.y()}; }
 
-
-/**
- * 64 Bit rorate right
- * @param x
- * @param offset
- * @return
- */
-constexpr static inline uint64_t ROTR64(const uint64_t x, const int offset) { return sycl::rotate<uint64_t>(x, 64 - offset); }
-
-/**
- * 64 Bit rotate left
- * @param x
- * @param offset
- * @return
- */
-constexpr static inline uint64_t ROTL64(const uint64_t x, const int offset) { return sycl::rotate<uint64_t>(x, offset); }
-
-/**
- * Rotates 8 bytes left
- * @param x
- * @return
- */
-constexpr static inline uint32_t ROL8(uint32_t x) { return sycl::rotate<uint32_t>(x, 8); }
-
 OPT_CONSTEXPR static inline sycl::uint2 ROR8(const sycl::uint2& a) {
     uint64_t word = devectorize(a);
-    word = sycl::rotate<uint64_t>(word, 64 - 8);
+    word = sycl::rotate<uint64_t>(word, 64U - 8U);
     return vectorize(word);
 }
 
 OPT_CONSTEXPR static inline sycl::uint2 ROL8(const sycl::uint2& a) {
     uint64_t word = devectorize(a);
-    word = sycl::rotate<uint64_t>(word, 8);
+    word = sycl::rotate<uint64_t>(word, 8U);
     return vectorize(word);
 }
 
@@ -151,18 +110,20 @@ OPT_CONSTEXPR static inline sycl::uint2 ROL2(const sycl::uint2& a, const int off
 /**
  * Generates the proper PTX on cuda at least: https://cuda.godbolt.org/z/4rds7od19
  */
-template<uint32_t bit, uint32_t numBits> static inline uint32_t bfe(uint32_t x) {
-    constexpr uint32_t mask = (numBits == 8 * sizeof(uint32_t)) ? ~(uint32_t(0)) : (uint32_t(1) << numBits) - uint32_t(1);
+template<int bit, int numBits> static inline uint32_t bfe(uint32_t x) {
+    static_assert(bit >= 0 && bit < 32);
+    static_assert(numBits > 0 && numBits <= 32);
+    constexpr uint32_t mask = (numBits == 8U * sizeof(uint32_t)) ? ~(static_cast<uint32_t>(0U)) : (static_cast<uint32_t>(1U) << numBits) - static_cast<uint32_t>(1);
     return (x >> bit) & mask;
 }
 
 
-template<size_t width, typename T> static inline T shuffle_sync(const sycl::sub_group& sg, const T& val, int srcLane) {
+template<int width, typename T> static inline T shuffle_sync(const sycl::sub_group& sg, const T& val, int srcLane) {
     if constexpr (width == 1) {
         return val;
     } else {
-        static_assert(width == 1 || width == 2 || width == 4 || width == 8 || width == 16 || width == 32);
-        int32_t offset = (sg.get_local_linear_id() / width) * width;
+        static_assert(width == 2 || width == 4 || width == 8 || width == 16 || width == 32);
+        int32_t offset = (static_cast<int32_t>(sg.get_local_linear_id()) / width) * width;
         return sycl::select_from_group(sg, val, (srcLane % width) + offset);
     }
 }
@@ -174,14 +135,14 @@ template<size_t width, typename T> static inline T shuffle_sync(const sycl::sub_
  * @return
  */
 template<typename KernelName> static inline size_t sycl_max_work_items(sycl::queue& q) {
-    size_t max_items = std::max<size_t>(1, std::min<size_t>(2048, (uint32_t) q.get_device().get_info<sycl::info::device::max_work_group_size>()));
+    size_t max_items = std::max<size_t>(1U, std::min<size_t>(2048U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
 #if defined(SYCL_IMPLEMENTATION_INTEL) || defined(SYCL_IMPLEMENTATION_ONEAPI)
     try {
         sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
         auto kernel = sycl::get_kernel_bundle<sycl::bundle_state::executable>(q.get_context()).get_kernel(id);
         //size_t register_count = kernel.get_info<sycl::info::kernel_device_specific::ext_codeplay_num_regs>(q.get_device());
         max_items = std::min(max_items, kernel.get_info<sycl::info::kernel_device_specific::work_group_size>(q.get_device()));
-        if (q.get_device().is_gpu()) { max_items = std::min<size_t>(max_items, 128); }
+        if (q.get_device().is_gpu()) { max_items = std::min<size_t>(max_items, 128U); }
     } catch (std::exception& e) {
         std::cout << "Couldn't read kernel properties for device: " << q.get_device().get_info<sycl::info::device::name>() << " got exception: " << e.what() << std::endl;
     }

@@ -10,8 +10,8 @@
 #pragma once
 
 #include "ethash_sycl_miner_kernel.h"
-
 #include "libeth/Farm.h"
+
 
 #include <libdev/Worker.h>
 #include <libeth/EthashAux.h>
