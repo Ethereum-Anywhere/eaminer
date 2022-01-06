@@ -123,7 +123,6 @@ static inline void ethash_calculate_dag_item(   //
         hash128_t* d_dag,                                     //
         const hash64_t* const d_light, const sycl::event& evt) {
 
-
     /**
      * Kernels need to be launched from a single place otherwise it generates
      * duplicate code, (and breaks with named kernels!)
