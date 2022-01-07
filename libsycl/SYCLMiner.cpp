@@ -57,6 +57,9 @@ public:
     hash64_t* d_light_global = nullptr;
     hash32_t d_header_global{};
     uint64_t d_target_global{};
+
+    sycl_device_task new_search_task{};
+    sycl_device_task previous_search_task{};
 };
 
 
@@ -128,6 +131,16 @@ void SYCLMiner::reset_device() noexcept {
         sycl::free(impl->d_kill_signal, impl->q);
         impl->d_kill_signal = nullptr;
     }
+
+    if (impl->previous_search_task.res) {
+        sycl::free(impl->previous_search_task.res, impl->q);
+        impl->previous_search_task.res = nullptr;
+    }
+
+    if (impl->new_search_task.res) {
+        sycl::free(impl->new_search_task.res, impl->q);
+        impl->new_search_task.res = nullptr;
+    }
 }
 
 /**
@@ -177,6 +190,15 @@ bool SYCLMiner::initEpoch() {
             ReportGPUNoMemoryAndPause("d_kill_signal", sizeof(uint32_t), m_deviceDescriptor.totalMemory);
             return false;   // This will prevent to exit the thread and
         }
+
+        try {
+            impl->new_search_task.res = sycl::malloc_device<Search_results>(1, impl->q);
+            impl->previous_search_task.res = sycl::malloc_device<Search_results>(1, impl->q);
+        } catch (...) {
+            ReportGPUNoMemoryAndPause("mining buffer", sizeof(Search_results), m_deviceDescriptor.totalMemory);
+            return false;   // This will prevent to exit the thread and
+        }
+
 
         // Release the pause flag if any
         resume(MinerPauseEnum::PauseDueToInsufficientMemory);
@@ -247,7 +269,7 @@ void SYCLMiner::workLoop() {
             // Job's differences should be handled at higher level
             last = current;
 
-            uint64_t upper64OfBoundary = ((u64) ((u256) current.boundary >> 192)).template convert_to<uint64_t>();
+            auto upper64OfBoundary = ((u64) ((u256) current.boundary >> 192)).template convert_to<uint64_t>();
 
             // adjust work multiplier
             float hr = RetrieveHashRate();
@@ -321,16 +343,14 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
 
     uint32_t batch_blocks(m_block_multiple * m_deviceDescriptor.sycl_work_items_search_kernel);
 
-    // prime the queue
-    std::future<Search_results> new_job;
-    std::future<Search_results> previous_job;
     {
         std::unique_lock<std::mutex> l(m_doneMutex);
         m_hung_miner.store(false);
-        new_job = run_ethash_search(                                //
+        impl->new_search_task = run_ethash_search(                  //
                 m_block_multiple,                                   //
                 m_deviceDescriptor.sycl_work_items_search_kernel,   //
                 impl->q,                                            //
+                impl->new_search_task,                              //
                 start_nonce,                                        //
                 m_epochContext.dagNumItems,                         //
                 impl->d_dag_global,                                 //
@@ -350,18 +370,18 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
         }
 
         // We switch the futures as `previous_job` was already consumed in the previous loop iteration.
-        previous_job = std::move(new_job);
-        new_job = {};
+        std::swap(impl->previous_search_task, impl->new_search_task);
 
         // Eventually enqueue new work on the device
         if (m_done) {
             busy = false;
         } else {
             m_hung_miner.store(false);
-            new_job = run_ethash_search(                                //
+            impl->new_search_task = run_ethash_search(                  //
                     m_block_multiple,                                   //
                     m_deviceDescriptor.sycl_work_items_search_kernel,   //
                     impl->q,                                            //
+                    impl->new_search_task,                              //
                     start_nonce,                                        //
                     m_epochContext.dagNumItems,                         //
                     impl->d_dag_global,                                 //
@@ -369,7 +389,7 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
                     impl->d_target_global);
         }
 
-        Search_results results = previous_job.get();
+        Search_results results = impl->previous_search_task.get_result(impl->q);
 
         if (results.solCount > MAX_SEARCH_RESULTS) results.solCount = MAX_SEARCH_RESULTS;
 

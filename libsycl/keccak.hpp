@@ -12,47 +12,20 @@
 #include "sycl_helpers.hpp"
 #include <array>
 
-#define USE_PRECOMPUTED_KECCAK_ROUND_CONSTANTS
-#ifdef USE_PRECOMPUTED_KECCAK_ROUND_CONSTANTS
-static const OPT_CONSTEXPR std::array<sycl::uint2, 24> keccak_round_constants_global{
-        sycl::uint2{0x00000001U, 0x00000000U}, sycl::uint2{0x00008082U, 0x00000000U}, sycl::uint2{0x0000808aU, 0x80000000U}, sycl::uint2{0x80008000U, 0x80000000U},
-        sycl::uint2{0x0000808bU, 0x00000000U}, sycl::uint2{0x80000001U, 0x00000000U}, sycl::uint2{0x80008081U, 0x80000000U}, sycl::uint2{0x00008009U, 0x80000000U},
-        sycl::uint2{0x0000008aU, 0x00000000U}, sycl::uint2{0x00000088U, 0x00000000U}, sycl::uint2{0x80008009U, 0x00000000U}, sycl::uint2{0x8000000aU, 0x00000000U},
-        sycl::uint2{0x8000808bU, 0x00000000U}, sycl::uint2{0x0000008bU, 0x80000000U}, sycl::uint2{0x00008089U, 0x80000000U}, sycl::uint2{0x00008003U, 0x80000000U},
-        sycl::uint2{0x00008002U, 0x80000000U}, sycl::uint2{0x00000080U, 0x80000000U}, sycl::uint2{0x0000800aU, 0x00000000U}, sycl::uint2{0x8000000aU, 0x80000000U},
-        sycl::uint2{0x80008081U, 0x80000000U}, sycl::uint2{0x00008080U, 0x80000000U}, sycl::uint2{0x80000001U, 0x00000000U}, sycl::uint2{0x80008008U, 0x80000000U}};
+static inline constexpr std::array<uint64_t, 24> round_constants = {   //
+        0x0000000000000001, 0x0000000000008082, 0x800000000000808a, 0x8000000080008000, 0x000000000000808b, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009,
+        0x000000000000008a, 0x0000000000000088, 0x0000000080008009, 0x000000008000000a, 0x000000008000808b, 0x800000000000008b, 0x8000000000008089, 0x8000000000008003,
+        0x8000000000008002, 0x8000000000000080, 0x000000000000800a, 0x800000008000000a, 0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008};
+
+OPT_CONSTEXPR static inline sycl::uint2 keccak_round_constants(int t) { return vectorize(round_constants[t]); }
 
 
-OPT_CONSTEXPR static inline sycl::uint2 keccak_round_constants(int t) { return keccak_round_constants_global[t]; }
-#else
-OPT_CONSTEXPR static inline sycl::uint2 keccak_round_constants(int i) {
-    const auto rc = [](int t) {
-        uint64_t result = 0x1;
-        for (int i = 1; i <= t; i++) {
-            result <<= 1;
-            if (result & 0x100) result ^= 0x71;
-        }
-        return result & 0x1;
-    };
-
-    uint64_t result = 0x0;
-    uint32_t shift = 1;
-    for (int j = 0; j < 7; j++) {
-        uint64_t value = rc(7 * i + j);
-        result |= value << (shift - 1);
-        shift *= 2;
-    }
-    return vectorize(result);
-}
-#endif
-
-
-OPT_CONSTEXPR static inline void keccak_f1600_init(std::array<sycl::uint2, 12>& state, const hash32_t* d_header) noexcept {
+OPT_CONSTEXPR static inline void keccak_f1600_init(std::array<sycl::uint2, 12>& state, const hash32_t& d_header) noexcept {
     sycl::uint2 s[25]{};
     sycl::uint2 t[5]{}, u{}, v{};
 
-    devectorize2(d_header->uint4s[0], s[0], s[1]);
-    devectorize2(d_header->uint4s[1], s[2], s[3]);
+    devectorize2(d_header.uint4s[0], s[0], s[1]);
+    devectorize2(d_header.uint4s[1], s[2], s[3]);
     s[4] = state[4];
     s[5] = {1, 0};
     s[8] = {0U, 0x80000000U};

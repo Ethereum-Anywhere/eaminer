@@ -13,7 +13,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <future>
 
 #if defined(__has_include)
 #    if __has_include(<sycl/sycl.hpp>)
@@ -81,14 +80,25 @@ typedef union {
     sycl::uint4 uint4s[64U / sizeof(sycl::uint4)];
 } hash64_t;
 
+struct sycl_device_task {
+    Search_results* res = nullptr;
+    sycl::event e{};
+    inline Search_results get_result(sycl::queue& q) {
+        Search_results local{};
+        q.memcpy(&local, res, sizeof(Search_results), e).wait();
+        e = sycl::event{};
+        return local;
+    }
+};
+
 
 //template<int threads_per_hash_, int parallel_hash_>
 struct sycl_ethash_search_kernel_tag {};
 
 //template<int threads_per_hash_ = THREADS_PER_HASH, int parallel_hash_ = PARALLEL_HASH>
-[[nodiscard]] std::future<Search_results> run_ethash_search(   //
-        uint32_t work_groups, uint32_t work_items, sycl::queue q, uint64_t start_nonce, uint64_t d_dag_num_items, const hash128_t* d_dag, const hash32_t& d_header,
-        uint64_t d_target, const sycl::event& e = {});
+[[nodiscard]] sycl_device_task run_ethash_search(   //
+        uint32_t work_groups, uint32_t work_items, sycl::queue q, sycl_device_task task, uint64_t start_nonce, uint64_t d_dag_num_items, const hash128_t* d_dag,
+        const hash32_t& d_header, uint64_t d_target);
 
 size_t get_ethash_search_kernel_max_work_items(sycl::queue& q);
 
