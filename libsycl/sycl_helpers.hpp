@@ -149,3 +149,24 @@ template<typename KernelName> static inline size_t sycl_max_work_items(sycl::que
 #endif
     return max_items;
 }
+
+
+OPT_CONSTEXPR static inline sycl::uint2 keccak_round_constants_compute(int i) {
+    const auto rc = [](int t) {
+        uint64_t result = 0x1;
+        for (int i = 1; i <= t; i++) {
+            result <<= 1;
+            if (result & 0x100) result ^= 0x71;
+        }
+        return result & 0x1;
+    };
+
+    uint64_t result = 0x0;
+    uint32_t shift = 1;
+    for (int j = 0; j < 7; j++) {
+        uint64_t value = rc(7 * i + j);
+        result |= value << (shift - 1);
+        shift *= 2;
+    }
+    return vectorize(result);
+}
