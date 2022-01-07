@@ -75,7 +75,7 @@ template<class T, class Out> inline void toBigEndian(T _val, Out& o_out) {
                   "only unsigned types or bigint supported");   // bigint does not carry sign bit on shift
     for (auto i = o_out.size(); i != 0; _val >>= 8, i--) {
         T v = _val & (T) 0xff;
-        o_out[i - 1] = (typename Out::value_type)(uint8_t) v;
+        o_out[i - 1] = (typename Out::value_type) v.template convert_to<uint8_t>();
     }
 }
 

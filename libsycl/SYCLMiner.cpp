@@ -1,4 +1,6 @@
-
+#ifdef __HIPSYCL_ENABLE_CUDA_TARGET__
+#    define BOOST_NO_CXX11_HDR_SYSTEM_ERROR
+#endif
 /* Copyright (C) 1883 Thomas Edison - All Rights Reserved
  * You may use, distribute and modify this code under the
  * terms of the GPLv3 license, which unfortunately won't be
@@ -245,7 +247,7 @@ void SYCLMiner::workLoop() {
             // Job's differences should be handled at higher level
             last = current;
 
-            uint64_t upper64OfBoundary((uint64_t) (u64) ((u256) current.boundary >> 192));
+            uint64_t upper64OfBoundary = ((u64) ((u256) current.boundary >> 192)).template convert_to<uint64_t>();
 
             // adjust work multiplier
             float hr = RetrieveHashRate();
@@ -289,7 +291,6 @@ void SYCLMiner::enumDevices(minerMap& DevicesCollection) {
         DeviceDescriptor deviceDescriptor;
         try {
             deviceDescriptor.uniqueId = "[SYCL "s + std::to_string(i) + "] ";
-
             if (get_platform_devices()[i].is_gpu()) {
                 deviceDescriptor.type = DeviceTypeEnum::Gpu;
             } else if (get_platform_devices()[i].is_accelerator()) {
@@ -299,7 +300,6 @@ void SYCLMiner::enumDevices(minerMap& DevicesCollection) {
             } else {
                 deviceDescriptor.type = DeviceTypeEnum::Unknown;
             }
-
             deviceDescriptor.totalMemory = get_platform_devices()[i].get_info<sycl::info::device::global_mem_size>();
             deviceDescriptor.sycl_device_idx = i;
             deviceDescriptor.boardName = "[SYCL "s + std::to_string(i) + "] " + get_platform_devices()[i].get_info<sycl::info::device::name>();
