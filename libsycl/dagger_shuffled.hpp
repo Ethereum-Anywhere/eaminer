@@ -22,7 +22,7 @@ static inline bool compute_hash(        //
         const uint64_t& nonce,          //
         const uint64_t& d_dag_size,     //
         const hash128_t* const d_dag,   //
-        const hash32_t* d_header,       //
+        const hash32_t& d_header,       //
         const uint64_t& d_target) noexcept {
     // sha3_512(header .. nonce)
     std::array<sycl::uint2, 12> state{};

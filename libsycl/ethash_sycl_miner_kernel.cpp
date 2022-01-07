@@ -12,61 +12,52 @@
 #include "keccak.hpp"
 
 template<int threads_per_hash_, int parallel_hash_>
-static inline void ethash_search_kernel(                                                                                //
-        const sycl::nd_item<1>& item,                                                                                   //
-        const sycl::accessor<Search_results, 1, sycl::access::mode::write, sycl::access::target::device>& g_output,     //
-        uint64_t start_nonce,                                                                                           //
-        uint64_t d_dag_num_items,                                                                                       //
-        const hash128_t* const d_dag,                                                                                   //
-        const sycl::accessor<hash32_t, 1, sycl::access::mode::read, sycl::access::target::constant_buffer>& d_header,   //
+static inline void ethash_search_kernel(   //
+        const sycl::nd_item<1>& item,      //
+        Search_results* g_output,          //
+        uint64_t start_nonce,              //
+        uint64_t d_dag_num_items,          //
+        const hash128_t* const d_dag,      //
+        const hash32_t& d_header,          //
         uint64_t d_target) noexcept {
 
     using atomic_ref_t = SYCL_ATOMIC_REF<uint32_t, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::global_space>;
-    auto done_ref = atomic_ref_t(g_output[0].done);
+    auto done_ref = atomic_ref_t(g_output->done);
     if (done_ref.load()) { return; }
     uint32_t const gid = item.get_global_linear_id();
-    bool r = compute_hash<threads_per_hash_, parallel_hash_>(item, start_nonce + gid, d_dag_num_items, d_dag, d_header.get_pointer(), d_target);
-    if (item.get_local_linear_id() == 0U) { atomic_ref_t(g_output[0].hashCount).fetch_add(1U); }
+    bool r = compute_hash<threads_per_hash_, parallel_hash_>(item, start_nonce + gid, d_dag_num_items, d_dag, d_header, d_target);
+    if (item.get_local_linear_id() == 0U) { atomic_ref_t(g_output->hashCount).fetch_add(1U); }
     if (r) { return; }
-    uint32_t index = atomic_ref_t(g_output[0].solCount).fetch_add(1U);
+    uint32_t index = atomic_ref_t(g_output->solCount).fetch_add(1U);
     if (index >= MAX_SEARCH_RESULTS) { return; }
-    g_output[0].gid[index] = gid;
+    g_output->gid[index] = gid;
     done_ref.store(1);
 }
 
+static Search_results empty_res{};
 
-[[nodiscard]] std::future<Search_results> run_ethash_search(   //
-        uint32_t work_groups,                                  //
-        uint32_t work_items,                                   //
-        sycl::queue q,                                         //
-        uint64_t start_nonce,                                  //
-        uint64_t d_dag_num_items,                              //
-        const hash128_t* const d_dag,                          //
-        const hash32_t& d_header,                              //
-        uint64_t d_target,                                     //
-        const sycl::event& in_evt) {
+[[nodiscard]] sycl_device_task run_ethash_search(   //
+        uint32_t work_groups,                       //
+        uint32_t work_items,                        //
+        sycl::queue q,                              //
+        sycl_device_task task,
+        uint64_t start_nonce,           //
+        uint64_t d_dag_num_items,       //
+        const hash128_t* const d_dag,   //
+        const hash32_t& d_header,       //
+        uint64_t d_target) {
 
-    return std::async(std::launch::async, [=]() mutable {
-        Search_results g_output{};
-        {
-            auto header_buf = sycl::buffer<hash32_t>(&d_header, 1U);
-            auto output_buf = sycl::buffer<Search_results>(&g_output, 1U);
-            header_buf.set_write_back(false);
-            header_buf.set_final_data(nullptr);
-            q.submit([&](sycl::handler& cgh) {
-                auto acc_header = header_buf.get_access<sycl::access::mode::read, sycl::access::target::constant_buffer>(cgh);
-                auto output_header = output_buf.get_access<sycl::access::mode::write, sycl::access::target::device>(cgh);
-                cgh.depends_on(in_evt);
-                cgh.parallel_for<sycl_ethash_search_kernel_tag>(                   //
-                        sycl::nd_range<1>(work_groups * work_items, work_items),   //
-                        [=](sycl::nd_item<1> item) /* [[sycl::reqd_sub_group_size(32)]] [[sycl::work_group_size_hint(128)]] */ {
-                            ethash_search_kernel<THREADS_PER_HASH, PARALLEL_HASH>(   //
-                                    item, output_header, start_nonce, d_dag_num_items, d_dag, acc_header, d_target);
-                        });
-            });
-        }
-        return g_output;
+    auto init_evt = q.memcpy(task.res, &empty_res, sizeof(Search_results));
+    task.e = q.submit([&](sycl::handler& cgh) {
+        cgh.depends_on(init_evt);
+        cgh.parallel_for<sycl_ethash_search_kernel_tag>(                   //
+                sycl::nd_range<1>(work_groups * work_items, work_items),   //
+                [=, output_buffer = task.res](sycl::nd_item<1> item) /* [[sycl::reqd_sub_group_size(32)]] [[sycl::work_group_size_hint(128)]] */ {
+                    ethash_search_kernel<THREADS_PER_HASH, PARALLEL_HASH>(   //
+                            item, output_buffer, start_nonce, d_dag_num_items, d_dag, d_header, d_target);
+                });
     });
+    return task;
 }
 
 //template std::future<Search_results> run_ethash_search<THREADS_PER_HASH, PARALLEL_HASH>(   //

@@ -50,7 +50,7 @@ private:
     void search(uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
 
 private:
-    constexpr static double target_batch_time = 1;
+    constexpr static double target_batch_time = 0.5;
 
     volatile bool m_done = {true};
     std::mutex m_doneMutex;
