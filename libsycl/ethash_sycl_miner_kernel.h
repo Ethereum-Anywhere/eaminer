@@ -85,7 +85,6 @@ struct sycl_device_task {
     sycl::event e{};
     inline Search_results get_result(sycl::queue& q) {
         Search_results local{};
-        std::cout << "getting result from " << (size_t) res << std::endl;
         q.memcpy(&local, res, sizeof(Search_results), e).wait();
         e = sycl::event{};
         return local;

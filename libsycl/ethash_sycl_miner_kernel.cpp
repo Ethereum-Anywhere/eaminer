@@ -47,7 +47,7 @@ static Search_results empty_res{};
         const hash32_t& d_header,       //
         uint64_t d_target) {
 
-    auto init_evt = q.memcpy(task.res, &empty_res, sizeof(Search_results));
+    auto init_evt = q.memcpy(task.res, &empty_res, sizeof(Search_results), task.e);
     task.e = q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(init_evt);
         cgh.parallel_for<sycl_ethash_search_kernel_tag>(                   //
