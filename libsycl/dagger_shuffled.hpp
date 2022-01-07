@@ -31,7 +31,7 @@ static inline bool compute_hash(        //
     keccak_f1600_init(state, d_header);
 
     // Threads work together in this phase in groups of 8.
-    const int thread_id = (int) (item.get_local_id() & (threads_per_hash - 1U));
+    const int thread_id = (int) (item.get_local_linear_id() & (threads_per_hash - 1U));
     const int mix_idx = thread_id & 3;
 
     for (int i = 0; i < threads_per_hash; i += parallel_hash) {

@@ -30,11 +30,6 @@ if (ETHDBUS)
     target_link_libraries(eaminer PRIVATE ${DBUS_LIBRARIES})
 endif ()
 
-if (ETHASHSYCL)
-    include(../libsycl/cmake/FindSYCL.cmake)
-    add_sycl_to_target(TARGET eaminer SOURCES ${SRC_LIST})
-endif ()
-
 
 if (APICORE)
     target_link_libraries(eaminer PRIVATE api)

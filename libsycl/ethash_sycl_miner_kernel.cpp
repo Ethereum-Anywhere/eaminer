@@ -94,7 +94,7 @@ static inline void ethash_calculate_dag_item(   //
     u.dag_node.words[0] ^= node_index;
     SHA3_512(u.sha3_buf);
 
-    const int thread_id = (int) (item.get_local_id() & 3U);
+    const int thread_id = (int) (item.get_local_linear_id() & 3U);
 #pragma unroll
     for (int i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
         uint32_t parent_index = fnv(node_index ^ i, u.dag_node.words[i % NODE_WORDS]) % d_light_num_items;
