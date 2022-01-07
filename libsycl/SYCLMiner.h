@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "ethash_sycl_miner_kernel.h"
+
 #include "libeth/Farm.h"
 
 
@@ -45,25 +45,18 @@ protected:
     void reset_device() noexcept;
 
 private:
-    static const std::vector<sycl::device>& get_platform_devices();
-
     void workLoop() override;
 
     void search(uint8_t const* header, uint64_t target, uint64_t _startN, const dev::eth::WorkPackage& w);
 
 private:
-    constexpr static double target_batch_time = 0.5;
+    constexpr static double target_batch_time = 1;
 
     volatile bool m_done = {true};
     std::mutex m_doneMutex;
 
-    sycl::queue q{sycl::default_selector{}};
-
-    uint32_t* d_kill_signal = nullptr;
-    hash128_t* d_dag_global = nullptr;
-    hash64_t* d_light_global = nullptr;
-    hash32_t d_header_global{};
-    uint64_t d_target_global{};
+    struct sycl_impl;
+    std::unique_ptr<sycl_impl> impl;
 };
 
 }   // namespace dev::eth
