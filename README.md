@@ -11,6 +11,7 @@ use through OpenCL.
 ## New features
 
 * SYCL mining (tested on AMD/HIP, NVIDIA/CUDA, Intel/L0, OpenMP and OpenCL)
+* Improved job switching (latency of only 0.2 ms)
 
 ## Features
 
