@@ -85,7 +85,7 @@ static void headers(vector<string>& h, bool color) {
     h.push_back(ss.str());
 
     ss.str("");
-    ss << white << "https://github.com/Ethereum-Anywhere/ea";
+    ss << white << "https://github.com/Ethereum-Anywhere/eaminer";
     h.push_back(ss.str());
 
     ss.str("");
