@@ -21,10 +21,9 @@ static inline void ethash_search_kernel(           //
         const uint64_t& d_dag_num_items,           //
         const hash128_t* __restrict const d_dag,   //
         const hash32_t& d_header,                  //
-        const uint64_t& d_target,                  //
-        uint32_t* __restrict const d_kill_signal_device) noexcept {
+        const uint64_t& d_target) noexcept {
 
-    auto done_ref = uint_atomic_ref_t(*d_kill_signal_device);
+    auto done_ref = uint_atomic_ref_t(g_output->done);
     uint32_t const gid = item.get_global_linear_id();
     bool r = compute_hash<threads_per_hash_, parallel_hash_>(item, start_nonce + gid, d_dag_num_items, d_dag, d_header, d_target);
     if (item.get_local_linear_id() == 0U) { uint_atomic_ref_t(g_output->hashCount).fetch_add(1U); }
@@ -37,18 +36,17 @@ static inline void ethash_search_kernel(           //
 
 static constexpr Search_results empty_res{};
 
-[[nodiscard]] sycl_device_task run_ethash_search(        //
-        uint32_t work_groups,                            //
-        uint32_t work_items,                             //
-        sycl::queue q,                                   //
-        sycl_device_task task,                           //
-        uint64_t start_nonce,                            //
-        uint64_t d_dag_num_items,                        //
-        const hash128_t* __restrict const d_dag,         //
-        hash32_t d_header,                               //
-        uint64_t d_target,                               //
-        const uint32_t* __restrict d_kill_signal_host,   //
-        uint32_t* __restrict d_kill_signal_device) {
+[[nodiscard]] sycl_device_task run_ethash_search(   //
+        uint32_t work_groups,                       //
+        uint32_t work_items,                        //
+        sycl::queue q,                              //
+        sycl_device_task task,                      //
+        uint64_t start_nonce,                       //
+        uint64_t d_dag_num_items,                   //
+        const hash128_t* __restrict const d_dag,    //
+        hash32_t d_header,                          //
+        uint64_t d_target,                          //
+        uint32_t* __restrict d_kill_signal_host) {
 
     auto init_evt = q.memcpy(task.res, &empty_res, sizeof(Search_results), task.e);
     task.e = q.submit([&](sycl::handler& cgh) {
@@ -56,12 +54,12 @@ static constexpr Search_results empty_res{};
         cgh.parallel_for<sycl_ethash_search_kernel_tag>(                   //
                 sycl::nd_range<1>(work_groups * work_items, work_items),   //
                 [=, output_buffer = task.res](sycl::nd_item<1> item) /* [[sycl::reqd_sub_group_size(32)]] [[sycl::work_group_size_hint(128)]] */ {
-                    auto done_ref = uint_atomic_ref_t(*d_kill_signal_device);
+                    auto done_ref = uint_atomic_ref_t(output_buffer->done);
                     /* We don't want to do RMA to host memory too often, so every N work-items only we will cache the data in device memory. */
                     if (item.get_local_linear_id() % 1024U == 0 && !done_ref.load()) { done_ref.store(*d_kill_signal_host != 0); }
                     if (done_ref.load()) { return; }
                     ethash_search_kernel<THREADS_PER_HASH, PARALLEL_HASH>(   //
-                            item, output_buffer, start_nonce, d_dag_num_items, d_dag, d_header, d_target, d_kill_signal_device);
+                            item, output_buffer, start_nonce, d_dag_num_items, d_dag, d_header, d_target);
                 });
     });
     return task;

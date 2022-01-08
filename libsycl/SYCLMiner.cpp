@@ -50,7 +50,6 @@ struct SYCLMiner::sycl_impl {
 public:
     sycl::queue q{sycl::default_selector{}};
     uint32_t* d_kill_signal_host = nullptr;
-    uint32_t* d_kill_signal_device = nullptr;
     hash128_t* d_dag_global = nullptr;
     hash64_t* d_light_global = nullptr;
     hash32_t d_header_global{};
@@ -130,11 +129,6 @@ void SYCLMiner::reset_device() noexcept {
         impl->d_kill_signal_host = nullptr;
     }
 
-    if (impl->d_kill_signal_device) {
-        sycl::free(impl->d_kill_signal_device, impl->q);
-        impl->d_kill_signal_device = nullptr;
-    }
-
     if (impl->previous_search_task.res) {
         sycl::free(impl->previous_search_task.res, impl->q);
         impl->previous_search_task.res = nullptr;
@@ -189,8 +183,6 @@ bool SYCLMiner::initEpoch() {
         try {
             impl->d_kill_signal_host = sycl::malloc_host<uint32_t>(1U, impl->q);
             *(impl->d_kill_signal_host) = 0;
-            impl->d_kill_signal_device = sycl::malloc_device<uint32_t>(1U, impl->q);
-            impl->q.memset(impl->d_kill_signal_device, 0, sizeof(uint32_t)).wait();
         } catch (...) {
             ReportGPUNoMemoryAndPause("d_kill_signal", sizeof(uint32_t), m_deviceDescriptor.totalMemory);
             return false;   // This will prevent to exit the thread and
@@ -301,10 +293,9 @@ void SYCLMiner::kick_miner() {
         m_done = true;
         if (impl->d_kill_signal_host) {
             *(impl->d_kill_signal_host) = 1;
-            impl->new_search_task.e.wait();
             impl->previous_search_task.e.wait();
+            impl->new_search_task.e.wait();
             *(impl->d_kill_signal_host) = 0;
-            impl->q.memset(impl->d_kill_signal_device, 0, sizeof(uint32_t)).wait();
         }
     }
 }
@@ -369,8 +360,7 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
                 impl->d_dag_global,                                 //
                 impl->d_header_global,                              //
                 impl->d_target_global,                              //
-                impl->d_kill_signal_host,                           //
-                impl->d_kill_signal_device);
+                impl->d_kill_signal_host);
         start_nonce += batch_blocks;
         m_done = false;
     }
@@ -402,8 +392,7 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
                     impl->d_dag_global,                                 //
                     impl->d_header_global,                              //
                     impl->d_target_global,                              //
-                    impl->d_kill_signal_host,                           //
-                    impl->d_kill_signal_device);
+                    impl->d_kill_signal_host);
         }
 
         Search_results results = impl->previous_search_task.get_result(impl->q);

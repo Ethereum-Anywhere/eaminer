@@ -34,6 +34,7 @@ inline constexpr int PARALLEL_HASH = 8;
 struct Search_results {
     uint32_t solCount;
     uint32_t hashCount;
+    uint32_t done;
     uint32_t gid[MAX_SEARCH_RESULTS];
 };
 
@@ -69,18 +70,17 @@ struct sycl_device_task {
 struct sycl_ethash_search_kernel_tag {};
 
 //template<int threads_per_hash_ = THREADS_PER_HASH, int parallel_hash_ = PARALLEL_HASH>
-[[nodiscard]] sycl_device_task run_ethash_search(        //
-        uint32_t work_groups,                            //
-        uint32_t work_items,                             //
-        sycl::queue q,                                   //
-        sycl_device_task task,                           //
-        uint64_t start_nonce,                            //
-        uint64_t d_dag_num_items,                        //
-        const hash128_t* __restrict const d_dag,         //
-        hash32_t d_header,                               //
-        uint64_t d_target,                               //
-        const uint32_t* __restrict d_kill_signal_host,   //
-        uint32_t* __restrict d_kill_signal_device);
+[[nodiscard]] sycl_device_task run_ethash_search(   //
+        uint32_t work_groups,                       //
+        uint32_t work_items,                        //
+        sycl::queue q,                              //
+        sycl_device_task task,                      //
+        uint64_t start_nonce,                       //
+        uint64_t d_dag_num_items,                   //
+        const hash128_t* __restrict const d_dag,    //
+        hash32_t d_header,                          //
+        uint64_t d_target,                          //
+        uint32_t* __restrict d_kill_signal_host);
 
 size_t get_ethash_search_kernel_max_work_items(sycl::queue& q);
 
