@@ -40,8 +40,8 @@ static constexpr Search_results empty_res{};
 
                     if constexpr (avoid_excessive_atomic_loads) {
                         uint32_t run_cancelled = false;
-                        if (item.get_local_linear_id() == 0U) { run_cancelled = done_ref.load(); }
-                        if (sycl::group_broadcast(item.get_group(), run_cancelled, 0U) != 0U) { return; }
+                        if (item.get_sub_group().get_local_linear_id() == 0U) { run_cancelled = done_ref.load(); }
+                        if (sycl::group_broadcast(item.get_sub_group(), run_cancelled, 0U) != 0U) { return; }
                     } else {
                         if (done_ref.load()) { return; }
                     }
