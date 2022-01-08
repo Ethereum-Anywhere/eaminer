@@ -136,7 +136,6 @@ template<int width, typename T> static inline T shuffle_sync(const sycl::sub_gro
  */
 template<typename KernelName> static inline size_t sycl_max_work_items(sycl::queue& q) {
     size_t max_items = std::max<size_t>(1U, std::min<size_t>(2048U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
-    if (q.get_device().is_gpu()) { max_items = std::min<size_t>(max_items, 128U); }
 #if defined(SYCL_IMPLEMENTATION_INTEL) || defined(SYCL_IMPLEMENTATION_ONEAPI)
     try {
         sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
@@ -146,6 +145,8 @@ template<typename KernelName> static inline size_t sycl_max_work_items(sycl::que
     } catch (std::exception& e) {
         std::cout << "Couldn't read kernel properties for device: " << q.get_device().get_info<sycl::info::device::name>() << " got exception: " << e.what() << std::endl;
     }
+#else
+    if (q.get_device().is_gpu()) { max_items = std::min<size_t>(max_items, 128U); }
 #endif
     return max_items;
 }
