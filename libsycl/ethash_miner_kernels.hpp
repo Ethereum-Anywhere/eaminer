@@ -7,12 +7,16 @@
  * this file.
  */
 
-#include "ethash_sycl_miner_kernel.h"
+#pragma once
+
+#include "ethash_miner_common.h"
+
 #include "dagger_shuffled.hpp"
 #include "keccak.hpp"
 
 
 static constexpr Search_results empty_res{};
+
 
 [[nodiscard]] sycl_device_task run_ethash_search(   //
         uint32_t work_groups,                       //
@@ -58,10 +62,6 @@ static constexpr Search_results empty_res{};
     });
     return task;
 }
-
-//template std::future<Search_results> run_ethash_search<THREADS_PER_HASH, PARALLEL_HASH>(   //
-//       uint32_t work_groups, uint32_t work_items, sycl::queue q, uint64_t start_nonce, uint64_t d_dag_num_items, const hash128_t* d_dag, const hash32_t& d_header,
-//      uint64_t d_target, const sycl::event& e = {});
 
 
 static inline void ethash_calculate_dag_item(   //
@@ -144,7 +144,5 @@ static inline void ethash_calculate_dag_item(   //
     }
     return events;
 }
-
-size_t get_ethash_generate_kernel_max_work_items(sycl::queue& q) { return sycl_max_work_items<sycl_ethash_calculate_dag_item_kernel_tag>(q); }
 
 size_t get_ethash_search_kernel_max_work_items(sycl::queue& q) { return sycl_max_work_items<sycl_ethash_search_kernel_tag>(q); }

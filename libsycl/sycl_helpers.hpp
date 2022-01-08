@@ -10,7 +10,7 @@
 #pragma once
 
 
-#include "ethash_sycl_miner_kernel.h"
+#include "ethash_miner_common.h"
 
 /**
  * Missing functions in HIPSYCL

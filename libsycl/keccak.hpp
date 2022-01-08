@@ -8,7 +8,6 @@
  */
 #pragma once
 
-
 #include "sycl_helpers.hpp"
 #include <array>
 

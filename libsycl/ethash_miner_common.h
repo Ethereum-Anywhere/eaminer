@@ -9,12 +9,12 @@
 
 #pragma once
 
+#include "include_sycl.h"
+
 #include <cstdint>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-
-#include "include_sycl.h"
 
 
 // It is virtually impossible to get more than
@@ -66,33 +66,7 @@ struct sycl_device_task {
 };
 
 
-//template<int threads_per_hash_, int parallel_hash_>
 struct sycl_ethash_search_kernel_tag {};
-
-//template<int threads_per_hash_ = THREADS_PER_HASH, int parallel_hash_ = PARALLEL_HASH>
-[[nodiscard]] sycl_device_task run_ethash_search(   //
-        uint32_t work_groups,                       //
-        uint32_t work_items,                        //
-        sycl::queue q,                              //
-        sycl_device_task task,                      //
-        uint64_t start_nonce,                       //
-        uint64_t d_dag_num_items,                   //
-        const hash128_t* __restrict const d_dag,    //
-        hash32_t d_header,                          //
-        uint64_t d_target,                          //
-        uint32_t* __restrict d_kill_signal_host);
-
-size_t get_ethash_search_kernel_max_work_items(sycl::queue& q);
-
-
-//extern template std::future<Search_results> run_ethash_search<THREADS_PER_HASH, PARALLEL_HASH>(   //
-//        uint32_t work_groups, uint32_t work_items, sycl::queue q, uint64_t start_nonce, uint64_t d_dag_num_items, const hash128_t* d_dag, const hash32_t& d_header,
-//        uint64_t d_target, const sycl::event& e = {});
 
 struct sycl_ethash_calculate_dag_item_kernel_tag {};
 
-[[nodiscard]] std::vector<sycl::event> ethash_generate_dag(   //
-        uint64_t dag_size, uint32_t work_groups, uint32_t work_items, sycl::queue q, uint32_t d_dag_num_items, uint32_t d_light_num_items, hash128_t* d_dag,
-        const hash64_t* d_light, const sycl::event& e = {});
-
-size_t get_ethash_generate_kernel_max_work_items(sycl::queue& q);

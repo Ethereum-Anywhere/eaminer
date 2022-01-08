@@ -7,11 +7,13 @@
  * this file.
  */
 
+#include "include_sycl.h"
+
 #include <ethash/ethash.hpp>
 #include <libeth/Farm.h>
 
 #include "SYCLMiner.h"
-#include "ethash_sycl_miner_kernel.h"
+#include "ethash_miner_kernels.hpp"
 
 using namespace dev;
 using namespace eth;
@@ -88,8 +90,8 @@ bool SYCLMiner::initDevice() {
           << ") Memory : " << dev::getFormattedMemory(static_cast<double>(m_deviceDescriptor.totalMemory));
 
 
-    m_deviceDescriptor.sycl_work_items_gen_kernel = get_ethash_search_kernel_max_work_items(impl->q);
-    m_deviceDescriptor.sycl_work_items_search_kernel = get_ethash_generate_kernel_max_work_items(impl->q);
+    m_deviceDescriptor.sycl_work_items_gen_kernel = sycl_max_work_items<sycl_ethash_calculate_dag_item_kernel_tag>(impl->q);
+    m_deviceDescriptor.sycl_work_items_search_kernel = sycl_max_work_items<sycl_ethash_search_kernel_tag>(impl->q);
     // Set Hardware Monitor Info
     m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
     m_hwmoninfo.devicePciId = impl->q.get_device().get_info<sycl::info::device::name>();
