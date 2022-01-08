@@ -24,7 +24,7 @@ cable_configure_toolchain(DEFAULT cxx17)
 
 
 project(eaminer)
-set(PROJECT_VERSION 1.3.15) # Update version
+set(PROJECT_VERSION 1.3.16) # Update version
 
 cable_set_build_type(DEFAULT Release CONFIGURATION_TYPES Release RelWithDebInfo)
 
