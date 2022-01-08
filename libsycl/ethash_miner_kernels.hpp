@@ -7,62 +7,61 @@
  * this file.
  */
 
-#include "ethash_sycl_miner_kernel.h"
+#pragma once
+
+#include "ethash_miner_common.h"
+
 #include "dagger_shuffled.hpp"
 #include "keccak.hpp"
 
-template<int threads_per_hash_, int parallel_hash_>
-static inline void ethash_search_kernel(   //
-        const sycl::nd_item<1>& item,      //
-        Search_results* g_output,          //
-        uint64_t start_nonce,              //
-        uint64_t d_dag_num_items,          //
-        const hash128_t* const d_dag,      //
-        const hash32_t& d_header,          //
-        uint64_t d_target) noexcept {
 
-    using atomic_ref_t = SYCL_ATOMIC_REF<uint32_t, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::global_space>;
-    auto done_ref = atomic_ref_t(g_output->done);
-    if (done_ref.load()) { return; }
-    uint32_t const gid = item.get_global_linear_id();
-    bool r = compute_hash<threads_per_hash_, parallel_hash_>(item, start_nonce + gid, d_dag_num_items, d_dag, d_header, d_target);
-    if (item.get_local_linear_id() == 0U) { atomic_ref_t(g_output->hashCount).fetch_add(1U); }
-    if (r) { return; }
-    uint32_t index = atomic_ref_t(g_output->solCount).fetch_add(1U);
-    if (index >= MAX_SEARCH_RESULTS) { return; }
-    g_output->gid[index] = gid;
-    done_ref.store(1);
-}
+static constexpr Search_results empty_res{};
 
-static Search_results empty_res{};
 
 [[nodiscard]] sycl_device_task run_ethash_search(   //
         uint32_t work_groups,                       //
         uint32_t work_items,                        //
         sycl::queue q,                              //
-        sycl_device_task task,
-        uint64_t start_nonce,           //
-        uint64_t d_dag_num_items,       //
-        const hash128_t* const d_dag,   //
-        const hash32_t& d_header,       //
-        uint64_t d_target) {
+        sycl_device_task task,                      //
+        uint64_t start_nonce,                       //
+        uint64_t d_dag_num_items,                   //
+        const hash128_t* __restrict const d_dag,    //
+        hash32_t d_header,                          //
+        uint64_t d_target,                          //
+        uint32_t* __restrict d_kill_signal_host) {
 
+    constexpr bool avoid_excessive_atomic_loads = true;
+    using uint_atomic_ref_t = SYCL_ATOMIC_REF<uint32_t, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::global_space>;
     auto init_evt = q.memcpy(task.res, &empty_res, sizeof(Search_results), task.e);
     task.e = q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(init_evt);
         cgh.parallel_for<sycl_ethash_search_kernel_tag>(                   //
                 sycl::nd_range<1>(work_groups * work_items, work_items),   //
                 [=, output_buffer = task.res](sycl::nd_item<1> item) /* [[sycl::reqd_sub_group_size(32)]] [[sycl::work_group_size_hint(128)]] */ {
-                    ethash_search_kernel<THREADS_PER_HASH, PARALLEL_HASH>(   //
-                            item, output_buffer, start_nonce, d_dag_num_items, d_dag, d_header, d_target);
+                    auto done_ref = uint_atomic_ref_t(output_buffer->done);
+                    /* We don't want to do RMA to host memory too often, so every 1024 work-items only we will cache the data in device memory. */
+                    if (item.get_local_linear_id() % 1024U == 0 && !done_ref.load()) { done_ref.store(*d_kill_signal_host != 0); }
+
+                    if constexpr (avoid_excessive_atomic_loads) {
+                        uint32_t run_cancelled = false;
+                        if (item.get_sub_group().get_local_linear_id() == 0U) { run_cancelled = done_ref.load(); }
+                        if (sycl::group_broadcast(item.get_sub_group(), run_cancelled, 0U) != 0U) { return; }
+                    } else {
+                        if (done_ref.load()) { return; }
+                    }
+
+                    bool r = compute_hash<THREADS_PER_HASH, PARALLEL_HASH>(item, start_nonce + item.get_global_linear_id(), d_dag_num_items, d_dag, d_header, d_target);
+                    if (item.get_local_linear_id() == 0U) { uint_atomic_ref_t(output_buffer->hashCount).fetch_add(1U); }
+                    if (r) { return; }
+
+                    if (uint32_t index = uint_atomic_ref_t(output_buffer->solCount).fetch_add(1U); index < MAX_SEARCH_RESULTS) {
+                        output_buffer->gid[index] = item.get_global_linear_id();
+                        uint_atomic_ref_t(output_buffer->done).store(1);
+                    }
                 });
     });
     return task;
 }
-
-//template std::future<Search_results> run_ethash_search<THREADS_PER_HASH, PARALLEL_HASH>(   //
-//       uint32_t work_groups, uint32_t work_items, sycl::queue q, uint64_t start_nonce, uint64_t d_dag_num_items, const hash128_t* d_dag, const hash32_t& d_header,
-//      uint64_t d_target, const sycl::event& e = {});
 
 
 static inline void ethash_calculate_dag_item(   //
@@ -145,7 +144,5 @@ static inline void ethash_calculate_dag_item(   //
     }
     return events;
 }
-
-size_t get_ethash_generate_kernel_max_work_items(sycl::queue& q) { return sycl_max_work_items<sycl_ethash_calculate_dag_item_kernel_tag>(q); }
 
 size_t get_ethash_search_kernel_max_work_items(sycl::queue& q) { return sycl_max_work_items<sycl_ethash_search_kernel_tag>(q); }

@@ -1,6 +1,3 @@
-#ifdef __HIPSYCL_ENABLE_CUDA_TARGET__
-#    define BOOST_NO_CXX11_HDR_SYSTEM_ERROR
-#endif
 /* Copyright (C) 1883 Thomas Edison - All Rights Reserved
  * You may use, distribute and modify this code under the
  * terms of the GPLv3 license, which unfortunately won't be
@@ -10,11 +7,13 @@
  * this file.
  */
 
+#include "include_sycl.h"
+
 #include <ethash/ethash.hpp>
 #include <libeth/Farm.h>
 
 #include "SYCLMiner.h"
-#include "ethash_sycl_miner_kernel.h"
+#include "ethash_miner_kernels.hpp"
 
 using namespace dev;
 using namespace eth;
@@ -52,7 +51,7 @@ struct SYCLMiner::sycl_impl {
 
 public:
     sycl::queue q{sycl::default_selector{}};
-    uint32_t* d_kill_signal = nullptr;
+    uint32_t* d_kill_signal_host = nullptr;
     hash128_t* d_dag_global = nullptr;
     hash64_t* d_light_global = nullptr;
     hash32_t d_header_global{};
@@ -91,8 +90,8 @@ bool SYCLMiner::initDevice() {
           << ") Memory : " << dev::getFormattedMemory(static_cast<double>(m_deviceDescriptor.totalMemory));
 
 
-    m_deviceDescriptor.sycl_work_items_gen_kernel = get_ethash_search_kernel_max_work_items(impl->q);
-    m_deviceDescriptor.sycl_work_items_search_kernel = get_ethash_generate_kernel_max_work_items(impl->q);
+    m_deviceDescriptor.sycl_work_items_gen_kernel = sycl_max_work_items<sycl_ethash_calculate_dag_item_kernel_tag>(impl->q);
+    m_deviceDescriptor.sycl_work_items_search_kernel = sycl_max_work_items<sycl_ethash_search_kernel_tag>(impl->q);
     // Set Hardware Monitor Info
     m_hwmoninfo.deviceType = HwMonitorInfoType::UNKNOWN;
     m_hwmoninfo.devicePciId = impl->q.get_device().get_info<sycl::info::device::name>();
@@ -127,9 +126,9 @@ void SYCLMiner::reset_device() noexcept {
         impl->d_dag_global = nullptr;
     }
 
-    if (impl->d_kill_signal) {
-        sycl::free(impl->d_kill_signal, impl->q);
-        impl->d_kill_signal = nullptr;
+    if (impl->d_kill_signal_host) {
+        sycl::free(impl->d_kill_signal_host, impl->q);
+        impl->d_kill_signal_host = nullptr;
     }
 
     if (impl->previous_search_task.res) {
@@ -182,10 +181,10 @@ bool SYCLMiner::initEpoch() {
             return false;   // This will prevent to exit the thread and
         }
 
-        // create mining buffer
+        // Allocate and initialize kill switches to abort the kernel.
         try {
-            impl->d_kill_signal = sycl::malloc_host<uint32_t>(1U, impl->q);
-            *(impl->d_kill_signal) = 0;
+            impl->d_kill_signal_host = sycl::malloc_host<uint32_t>(1U, impl->q);
+            *(impl->d_kill_signal_host) = 0;
         } catch (...) {
             ReportGPUNoMemoryAndPause("d_kill_signal", sizeof(uint32_t), m_deviceDescriptor.totalMemory);
             return false;   // This will prevent to exit the thread and
@@ -213,12 +212,14 @@ bool SYCLMiner::initEpoch() {
                 m_epochContext.dagNumItems,                      //
                 m_epochContext.lightNumItems,                    //
                 impl->d_dag_global,                              //
-                impl->d_light_global, light_dag_copy_evt);
+                impl->d_light_global,                            //
+                light_dag_copy_evt);
 
         for (auto& e: gen_events) { e.wait_and_throw(); }
 
-        ReportDAGDone(   //
-                m_epochContext.dagSize, uint32_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startInit).count()), true);
+        ReportDAGDone(m_epochContext.dagSize,                                                                                                  //
+                      uint32_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startInit).count()),   //
+                      true);
     } catch (std::exception& ec) {
         cnote << "Unexpected error " << ec.what() << " on SYCL device " << m_deviceDescriptor.uniqueId;
         cnote << "Mining suspended ...";
@@ -292,7 +293,12 @@ void SYCLMiner::kick_miner() {
     std::unique_lock<std::mutex> l(m_doneMutex);
     if (!m_done) {
         m_done = true;
-        if (impl->d_kill_signal) { *(impl->d_kill_signal) = 1; }
+        if (impl->d_kill_signal_host) {
+            *(impl->d_kill_signal_host) = 1;
+            impl->previous_search_task.e.wait();
+            impl->new_search_task.e.wait();
+            *(impl->d_kill_signal_host) = 0;
+        }
     }
 }
 
@@ -355,7 +361,8 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
                 m_epochContext.dagNumItems,                         //
                 impl->d_dag_global,                                 //
                 impl->d_header_global,                              //
-                impl->d_target_global);
+                impl->d_target_global,                              //
+                impl->d_kill_signal_host);
         start_nonce += batch_blocks;
         m_done = false;
     }
@@ -386,7 +393,8 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
                     m_epochContext.dagNumItems,                         //
                     impl->d_dag_global,                                 //
                     impl->d_header_global,                              //
-                    impl->d_target_global);
+                    impl->d_target_global,                              //
+                    impl->d_kill_signal_host);
         }
 
         Search_results results = impl->previous_search_task.get_result(impl->q);
@@ -408,7 +416,6 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
         start_nonce += batch_blocks;
         updateHashRate(m_deviceDescriptor.sycl_work_items_search_kernel, results.hashCount);
     }
-
 
 #ifdef DEV_BUILD
     // Optionally log job switch time
