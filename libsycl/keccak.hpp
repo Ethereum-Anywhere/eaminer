@@ -605,7 +605,7 @@ OPT_CONSTEXPR static inline uint64_t keccak_f1600_final(std::array<sycl::uint2, 
     return devectorize(s[0] ^ keccak_round_constants(23));
 }
 
-OPT_CONSTEXPR static inline void SHA3_512(sycl::uint2* s) noexcept {
+OPT_CONSTEXPR static inline void SHA3_512(sycl::uint2* __restrict s) noexcept {
     sycl::uint2 t[5]{}, u{}, v{};
 
 #pragma unroll

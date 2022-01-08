@@ -17,12 +17,12 @@ template<typename T> OPT_CONSTEXPR static inline T fnv(const T& a, const T& b) {
 constexpr static inline uint32_t fnv_reduce(const sycl::uint4& v) { return fnv(fnv(fnv(v.x(), v.y()), v.z()), v.w()); }
 
 template<int threads_per_hash, int parallel_hash, bool use_dagger_variant = false>
-static inline bool compute_hash(        //
-        const sycl::nd_item<1>& item,   //
-        const uint64_t& nonce,          //
-        const uint64_t& d_dag_size,     //
-        const hash128_t* const d_dag,   //
-        const hash32_t& d_header,       //
+static inline bool compute_hash(                   //
+        const sycl::nd_item<1>& item,              //
+        const uint64_t& nonce,                     //
+        const uint64_t& d_dag_size,                //
+        const hash128_t* const __restrict d_dag,   //
+        const hash32_t& d_header,                  //
         const uint64_t& d_target) noexcept {
     // sha3_512(header .. nonce)
     std::array<sycl::uint2, 12> state{};
