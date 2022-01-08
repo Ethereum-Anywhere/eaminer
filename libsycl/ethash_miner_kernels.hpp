@@ -32,6 +32,7 @@ static constexpr Search_results empty_res{};
 
     constexpr bool avoid_excessive_atomic_loads = true;
     using uint_atomic_ref_t = SYCL_ATOMIC_REF<uint32_t, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::global_space>;
+    using uint_atomic_ref_host_t = SYCL_ATOMIC_REF<uint32_t, sycl::memory_order::relaxed, sycl::memory_scope::system, sycl::access::address_space::global_space>;
     auto init_evt = q.memcpy(task.res, &empty_res, sizeof(Search_results), task.e);
     task.e = q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(init_evt);
@@ -39,8 +40,11 @@ static constexpr Search_results empty_res{};
                 sycl::nd_range<1>(work_groups * work_items, work_items),   //
                 [=, output_buffer = task.res](sycl::nd_item<1> item) /* [[sycl::reqd_sub_group_size(32)]] [[sycl::work_group_size_hint(128)]] */ {
                     auto done_ref = uint_atomic_ref_t(output_buffer->done);
-                    /* We don't want to do RMA to host memory too often, so every 1024 work-items only we will cache the data in device memory. */
-                    if (item.get_local_linear_id() % 1024U == 0 && !done_ref.load()) { done_ref.store(*d_kill_signal_host != 0); }
+                    /* We don't want to do RMA to host memory too often, so every 2048 work-items only we will cache the data in device memory. */
+                    if (item.get_global_linear_id() % 2048U == 0 && !done_ref.load()) {
+                        auto host_signal_ref = uint_atomic_ref_host_t(*d_kill_signal_host);
+                        done_ref.store(host_signal_ref.load() != 0);
+                    }
 
                     if constexpr (avoid_excessive_atomic_loads) {
                         uint32_t run_cancelled = false;
