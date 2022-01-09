@@ -43,7 +43,7 @@ template<int N, typename T> static constexpr void copy(T* dst, const T* src) {
  */
 constexpr static inline uint64_t SWAB64(const uint64_t x) {
 #if defined(__INTEL_LLVM_COMPILER) && __INTEL_LLVM_COMPILER <= 20220000
-    return ((x & 0xff00000000000000ULL) >> 56) + ((x & 0x00ff000000000000ULL) >> 40) + ((x & 0x0000ff0000000000ULL) >> 24) + ((x & 0x000000ff00000000ULL) >> 8) |
+    return ((x & 0xff00000000000000ULL) >> 56) + ((x & 0x00ff000000000000ULL) >> 40) + ((x & 0x0000ff0000000000ULL) >> 24) + ((x & 0x000000ff00000000ULL) >> 8) +
            ((x & 0x00000000ff000000ULL) << 8) + ((x & 0x0000000000ff0000ULL) << 24) + ((x & 0x000000000000ff00ULL) << 40) + ((x & 0x00000000000000ffULL) << 56);
 #else
     return ((x & 0xff00000000000000ULL) >> 56) | ((x & 0x00ff000000000000ULL) >> 40) | ((x & 0x0000ff0000000000ULL) >> 24) | ((x & 0x000000ff00000000ULL) >> 8) |
