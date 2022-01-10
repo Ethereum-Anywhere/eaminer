@@ -71,10 +71,10 @@ static constexpr Search_results empty_res{};
 static inline void ethash_calculate_dag_item(   //
         const sycl::nd_item<1>& item,           //
         uint32_t start,                         //
-        uint64_t d_dag_num_items,               //
+        uint32_t d_dag_num_items,               //
         uint32_t d_light_num_items,             //
-        hash128_t* d_dag,                       //
-        const hash64_t* const d_light) noexcept {
+        hash128_t* __restrict d_dag,            //
+        const hash64_t* __restrict const d_light) noexcept {
 
     const uint32_t node_index = start + item.get_global_linear_id();
     if (((node_index >> 1) & (~1)) >= d_dag_num_items) return;
@@ -116,14 +116,15 @@ static inline void ethash_calculate_dag_item(   //
         sycl::queue q,                                        //
         uint32_t d_dag_num_items,                             //
         uint32_t d_light_num_items,                           //
-        hash128_t* d_dag,                                     //
-        const hash64_t* const d_light, const sycl::event& evt) {
+        hash128_t* __restrict d_dag,                          //
+        const hash64_t* __restrict const d_light,             //
+        const sycl::event& evt) {
 
     /**
      * Kernels need to be launched from a single place otherwise it generates
      * duplicate code, (and breaks with named kernels!)
      */
-    auto dag_generation_kernel_launcher = [&](const auto& launch_work_groups, const auto& base) {
+    const auto dag_generation_kernel_launcher = [&](const uint32_t& launch_work_groups, const uint32_t& base) {
         return q.submit([&](sycl::handler& cgh) {
             cgh.depends_on(evt);
             cgh.parallel_for<sycl_ethash_calculate_dag_item_kernel_tag>(              //
@@ -148,5 +149,3 @@ static inline void ethash_calculate_dag_item(   //
     }
     return events;
 }
-
-size_t get_ethash_search_kernel_max_work_items(sycl::queue& q) { return sycl_max_work_items<sycl_ethash_search_kernel_tag>(q); }
