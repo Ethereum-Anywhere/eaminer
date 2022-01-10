@@ -14,7 +14,7 @@
 
 template<typename T> OPT_CONSTEXPR static inline T fnv(const T& a, const T& b) { return (a * 0x01000193U) ^ b; }
 
-constexpr static inline uint32_t fnv_reduce(const sycl::uint4& v) { return fnv(fnv(fnv(v.x(), v.y()), v.z()), v.w()); }
+OPT_CONSTEXPR static inline uint32_t fnv_reduce(const sycl::uint4& v) { return fnv(fnv(fnv(v.x(), v.y()), v.z()), v.w()); }
 
 template<int threads_per_hash, int parallel_hash, bool use_dagger_variant = false>
 static inline bool compute_hash(                   //

@@ -58,7 +58,7 @@ public:
     uint64_t d_target_global{};
 
     sycl_device_task new_search_task{};
-    sycl_device_task previous_search_task{};
+    //sycl_device_task previous_search_task{};
 };
 
 
@@ -131,10 +131,10 @@ void SYCLMiner::reset_device() noexcept {
         impl->d_kill_signal_host = nullptr;
     }
 
-    if (impl->previous_search_task.res) {
-        sycl::free(impl->previous_search_task.res, impl->q);
-        impl->previous_search_task.res = nullptr;
-    }
+    //if (impl->previous_search_task.res) {
+    //    sycl::free(impl->previous_search_task.res, impl->q);
+    //    impl->previous_search_task.res = nullptr;
+    //}
 
     if (impl->new_search_task.res) {
         sycl::free(impl->new_search_task.res, impl->q);
@@ -192,7 +192,7 @@ bool SYCLMiner::initEpoch() {
 
         try {
             impl->new_search_task.res = sycl::malloc_device<Search_results>(1, impl->q);
-            impl->previous_search_task.res = sycl::malloc_device<Search_results>(1, impl->q);
+            //impl->previous_search_task.res = sycl::malloc_device<Search_results>(1, impl->q);
         } catch (...) {
             ReportGPUNoMemoryAndPause("mining buffer", sizeof(Search_results), m_deviceDescriptor.totalMemory);
             return false;   // This will prevent to exit the thread and
@@ -295,7 +295,7 @@ void SYCLMiner::kick_miner() {
         m_done = true;
         if (impl->d_kill_signal_host) {
             *(impl->d_kill_signal_host) = 1;
-            impl->previous_search_task.e.wait();
+            //impl->previous_search_task.e.wait();
             impl->new_search_task.e.wait();
             *(impl->d_kill_signal_host) = 0;
         }
@@ -377,8 +377,9 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
         }
 
         // We switch the futures as `previous_job` was already consumed in the previous loop iteration.
-        std::swap(impl->previous_search_task, impl->new_search_task);
+        //std::swap(impl->previous_search_task, impl->new_search_task);
 
+        Search_results results = impl->new_search_task.get_result(impl->q);
         // Eventually enqueue new work on the device
         if (m_done) {
             busy = false;
@@ -397,7 +398,6 @@ void SYCLMiner::search(uint8_t const* header, uint64_t target, uint64_t start_no
                     impl->d_kill_signal_host);
         }
 
-        Search_results results = impl->previous_search_task.get_result(impl->q);
 
         if (results.solCount > MAX_SEARCH_RESULTS) results.solCount = MAX_SEARCH_RESULTS;
 

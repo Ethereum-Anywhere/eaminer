@@ -54,7 +54,7 @@ constexpr static inline uint64_t SWAB64(const uint64_t x) {
 /**
  * Returns 64 unsigned where HI is x.y and LO is x.x
  */
-constexpr static inline uint64_t devectorize(const sycl::uint2& x) { return sycl::upsample(x.y(), x.x()); }
+OPT_CONSTEXPR static inline uint64_t devectorize(const sycl::uint2& x) { return sycl::upsample(x.y(), x.x()); }
 
 /**
  * returns "sycl::uint2{ lo, hi }"
@@ -70,7 +70,7 @@ OPT_CONSTEXPR static inline sycl::uint2 vectorize(const uint64_t x) { return syc
  * @param y
  * @return
  */
-constexpr static inline void devectorize2(const sycl::uint4& in, sycl::uint2& x, sycl::uint2& y) {
+OPT_CONSTEXPR static inline void devectorize2(const sycl::uint4& in, sycl::uint2& x, sycl::uint2& y) {
     x.x() = in.x();
     x.y() = in.y();
     y.x() = in.z();

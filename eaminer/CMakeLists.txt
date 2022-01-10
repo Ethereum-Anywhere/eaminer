@@ -30,6 +30,10 @@ if (ETHDBUS)
     target_link_libraries(eaminer PRIVATE ${DBUS_LIBRARIES})
 endif ()
 
+if (APPLE AND ETHASHSYCL)
+    include(../libsycl/cmake/FindSYCL.cmake)
+    add_sycl_to_target(TARGET ${EXECUTABLE})
+endif ()
 
 if (APICORE)
     target_link_libraries(eaminer PRIVATE api)

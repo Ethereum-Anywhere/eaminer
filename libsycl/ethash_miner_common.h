@@ -31,6 +31,8 @@ inline constexpr int NODE_WORDS = (64 / 4);
 
 inline constexpr int PARALLEL_HASH = 8;
 
+inline static double target_batch_time = 0.5;
+
 struct Search_results {
     uint32_t solCount;
     uint32_t hashCount;

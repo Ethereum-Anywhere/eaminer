@@ -21,7 +21,7 @@ if (hipSYCL_FOUND)
     endif ()
     # We expect the DPCPP compiler to have been used
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "IntelLLVM")
-    set(DPCPP_FLAGS "-fsycl-targets=spir64,nvptx64-nvidia-cuda -Xcuda-ptxas -v" CACHE STRING "SYCL Flags (for LLVM/SYCL and Intel(R) DPC++)")
+    set(DPCPP_FLAGS "-fsycl-targets=spir64,nvptx64-nvidia-cuda -Xcuda-ptxas -v -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75" CACHE STRING "SYCL Flags (for LLVM/SYCL and Intel(R) DPC++)") # -regUsageLevel=0
     function(add_sycl_to_target arg1 arg2)
         separate_arguments(DPCPP_FLAGS UNIX_COMMAND "${DPCPP_FLAGS}")
         target_compile_options(${arg2} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${DPCPP_FLAGS} -fsycl -sycl-std=2020 -fsycl-id-queries-fit-in-int -fsycl-unnamed-lambda -DNDEBUG -DSYCL_DISABLE_FALLBACK_ASSERT=0 -Wno-unknown-cuda-version -fgpu-inline-threshold=1000>)
