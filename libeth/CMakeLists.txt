@@ -14,7 +14,7 @@ set(SOURCES
 
 include_directories(BEFORE ..)
 
-add_library(eth ${SOURCES})
+add_library(eth STATIC ${SOURCES})
 target_link_libraries(eth PUBLIC dev PRIVATE hwmon ethash OpenSSL::SSL)
 
 if (ETHASHCL)

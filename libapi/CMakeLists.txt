@@ -6,10 +6,8 @@
 # You should have received a copy of the LICENSE file with
 # this file. 
 
-set(SOURCES
-        ApiServer.h ApiServer.cpp
-        )
+set(SOURCES ApiServer.h ApiServer.cpp)
 
-add_library(api ${SOURCES})
-target_link_libraries(api PRIVATE eth dev eaminer-buildinfo Boost::filesystem ethash OpenSSL::SSL)
+add_library(api STATIC ${SOURCES})
+target_link_libraries(api PRIVATE eth dev eaminer-buildinfo Boost::filesystem ethash OpenSSL::SSL jsoncpp_static)
 target_include_directories(api PRIVATE ..)

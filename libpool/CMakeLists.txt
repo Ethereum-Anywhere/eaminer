@@ -18,6 +18,6 @@ set(SOURCES
 
 find_package(OpenSSL REQUIRED)
 
-add_library(pool ${SOURCES})
-target_link_libraries(pool PRIVATE dev eaminer-buildinfo Boost::system ${JSONCPP_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ethash)
+add_library(pool STATIC ${SOURCES})
+target_link_libraries(pool PRIVATE dev eaminer-buildinfo Boost::system jsoncpp_static OpenSSL::SSL OpenSSL::Crypto ethash)
 target_include_directories(pool PRIVATE ..)

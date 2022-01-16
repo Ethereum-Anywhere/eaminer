@@ -34,6 +34,6 @@ find_package(OpenCL REQUIRED)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(..)
 
-add_library(cl ${SOURCES})
+add_library(cl STATIC ${SOURCES})
 target_link_libraries(cl PUBLIC eth)
 target_link_libraries(cl PRIVATE OpenCL::OpenCL Boost::filesystem Boost::thread ethash)

@@ -57,17 +57,22 @@ function(configureProject)
     endif ()
 endfunction()
 
-#hunter_add_package(Boost COMPONENTS system filesystem thread program_options)
+
 find_package(Boost COMPONENTS system filesystem thread program_options REQUIRED)
 
 find_package(OpenSSL REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(JSONCPP jsoncpp)
-link_directories(${JSONCPP_LIBRARY_DIRS})
-if (NOT ${JSONCPP_INCLUDE_DIRS} STREQUAL "")
-    include_directories("${JSONCPP_INCLUDE_DIRS}")
-endif ()
+include(FetchContent)
+FetchContent_Declare(
+        jsoncpp
+        GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
+        GIT_TAG 1.9.5
+)
+
+FetchContent_MakeAvailable(jsoncpp)
+FetchContent_GetProperties(jsoncpp)
+include_directories(${FETCHCONTENT_BASE_DIR}/jsoncpp-src/include)
+
 configureProject()
 
 message("----------------------------------------------------------------------------")

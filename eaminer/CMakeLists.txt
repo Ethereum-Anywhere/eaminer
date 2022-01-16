@@ -20,7 +20,7 @@ add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 
-target_link_libraries(eaminer PRIVATE eth pool dev eaminer-buildinfo Boost::system Boost::thread Boost::program_options ethash OpenSSL::SSL ${JSONCPP_LIBRARIES})
+target_link_libraries(eaminer PRIVATE eth pool dev eaminer-buildinfo Boost::system Boost::thread Boost::program_options ethash OpenSSL::SSL jsoncpp_static)
 if (ETHDBUS)
     find_package(PkgConfig)
     set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/lib/x86_64-linux-gnu/pkgconfig")

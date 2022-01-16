@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Copying only .git files to init submodule to be able to use docker cache more
 COPY .git .git
-COPY .gitmodules .gitattributes ./
+COPY .gitattributes ./
 RUN git submodule update --init --recursive
 
 # Copying everything 

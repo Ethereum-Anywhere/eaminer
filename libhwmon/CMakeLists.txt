@@ -13,7 +13,7 @@ set(SOURCES
         wrapamdsysfs.h wrapamdsysfs.cpp
         )
 
-add_library(hwmon ${SOURCES})
+add_library(hwmon STATIC ${SOURCES})
 set(HWMON_LINK_LIBRARIES dev Boost::filesystem)
 
 if (UNIX)
